@@ -1,4 +1,46 @@
-# ludo-Zebra-2027
- Ludo – Software Engineering &amp  Fall 2027 – group Zebra
- Assignemnt 1 : DONE
- 2 questions and the initial report as a PDF
+# Ludo Zebra
+
+משחק Ludo לימודי ב-Java (Swing, MVC) – קורס הנדסת תוכנה ואבטחת איכות, אוניברסיטת חיפה, קבוצת Zebra.
+
+## הרצה
+
+דרוש Java 17 ומעלה.
+
+```
+java -jar Ludo-Zebra.jar
+```
+
+או לחיצה כפולה על `Ludo-Zebra.jar`.
+
+## בנייה
+
+בלי Maven:
+
+```
+./build.sh
+```
+
+עם Maven (כולל בדיקות JUnit 5):
+
+```
+mvn package
+```
+
+## מבנה
+
+| חבילה | תוכן |
+|---|---|
+| `Model` | נתונים וחוקים, בלי מחלקות ממשק (NFR-06): רמות, צבעים, שחקנים, בדיקת הגדרת משחק |
+| `View` | מסכי Swing בעברית, מימין לשמאל: פתיחה, הגדרה, משחק, מסכים זמניים |
+| `Controller` | `Main`, ניווט בין מסכים ואישור יציאה, חיבור מסך ההגדרה למודל |
+
+## איטרציה 1 – מה ממומש בענף הזה
+
+| FR | מה | מחלקות |
+|---|---|---|
+| FR-01 | מסך פתיחה וחזרה אליו מכל מסך שאינו משחק | `MainMenuPanel`, `MainController` |
+| FR-02 | אישור יציאה ממשחק פעיל, עם הודעה שהמשחק לא יישמר | `MainController`, `Dialogs` |
+| FR-03–FR-06 | מסך הגדרה: 2–4 שחקנים, רמה, שם וצבע, שגיאה ליד כל שדה | `GameSetupPanel`, `GameSetupValidator`, `SetupController` |
+| FR-07, FR-08 | סדר תורות לפי הזנה, הגדרות נעולות אחרי תחילת משחק | `GameSettings`, `Player` |
+
+מסך המשחק (`GameScreenPanel`) הוא מעטפת: הלוח, הקובייה והתנועה נכנסים בו דרך `setBoard(...)`.
