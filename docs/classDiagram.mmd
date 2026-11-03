@@ -1,0 +1,410 @@
+---
+title: Ludo Zebra – Class Diagram (planned full system; green = implemented in iteration 1)
+---
+classDiagram
+direction TB
+
+namespace Model {
+    class Difficulty {
+        <<enumeration>>
+        EASY
+        MEDIUM
+        HARD
+        +getHebrewName() String
+    }
+    class PlayerColor {
+        <<enumeration>>
+        RED
+        GREEN
+        YELLOW
+        BLUE
+        +getHebrewName() String
+    }
+    class Player {
+        <<record>>
+        -name : String
+        -color : PlayerColor
+        -turnOrder : int
+    }
+    class GameSettings {
+        <<record>>
+        -difficulty : Difficulty
+        -players : List~Player~
+    }
+    class GameSetupValidator {
+        +MIN_PLAYERS : int = 2
+        +MAX_PLAYERS : int = 4
+        +MAX_NAME_LENGTH : int = 15
+        +validate(count, difficulty, names, colors) SetupValidationResult
+    }
+    class SetupValidationResult {
+        -errors : Map~String,String~
+        -settings : GameSettings
+        +isValid() boolean
+        +errorFor(field) Optional~String~
+        +getSettings() GameSettings
+    }
+    class LevelConfig {
+        -difficulty : Difficulty
+        -trackSizes : int[]
+        -protectedCount : int
+        -arrowCount : int
+        -questionsPerLevel : int
+        -surpriseCount : int
+        -multiplierDie : MultiplierType
+        +forLevel(Difficulty)$ LevelConfig
+    }
+    class LevelRules {
+        <<interface>>
+        +buildBoard(LevelConfig) Board
+        +rollDice(Dice) DiceRoll
+    }
+    class EasyRules
+    class MediumRules
+    class HardRules
+    class Game {
+        -settings : GameSettings
+        -board : Board
+        -turns : TurnManager
+        -rules : LevelRules
+        -startTime : Instant
+        -finishOrder : List~Player~
+        -observers : List~GameObserver~
+        +roll() DiceRoll
+        +legalMoves() List~Move~
+        +applyMove(Move) void
+        +isOver() boolean
+        +addObserver(GameObserver) void
+    }
+    class GameObserver {
+        <<interface>>
+        +onGameChanged(GameEvent) void
+    }
+    class Board {
+        -squares : List~Square~
+        -tracks : List~Track~
+        -homePaths : Map~PlayerColor, List~
+        +squareAt(index) Square
+        +path(Piece, steps) List~Square~
+        +placeSpecialSquares(Random) void
+    }
+    class Track {
+        -index : int
+        -length : int
+        -squares : List~Square~
+    }
+    class Square {
+        -index : int
+        -type : SquareType
+        -owner : PlayerColor
+        -questionLevel : Difficulty
+        +isProtected() boolean
+        +piecesOf(Player) List~Piece~
+    }
+    class SquareType {
+        <<enumeration>>
+        REGULAR
+        START
+        ARROW
+        PROTECTED
+        QUESTION
+        SURPRISE
+        HOME_PATH
+        HOME
+    }
+    class Piece {
+        -owner : Player
+        -position : Square
+        -inCastle : boolean
+        -finished : boolean
+    }
+    class Dice {
+        -random : Random
+        +rollSteps() int
+        +rollBoost() int
+        +rollUltraBoost() int
+    }
+    class DiceRoll {
+        <<record>>
+        -steps : int
+        -multiplier : int
+        +totalSteps() int
+    }
+    class TurnManager {
+        -order : List~Player~
+        -current : int
+        -sixStreak : int
+        -skipNext : Set~Player~
+        +currentPlayer() Player
+        +grantsExtraRoll(DiceRoll) boolean
+        +next() Player
+    }
+    class MoveValidator {
+        +legalMoves(Board, Player, DiceRoll) List~Move~
+        +whyNot(Piece, DiceRoll) String
+    }
+    class Move {
+        <<record>>
+        -piece : Piece
+        -from : Square
+        -to : Square
+        -captures : Piece
+    }
+    class Question {
+        <<record>>
+        -id : int
+        -level : Difficulty
+        -text : String
+        -answers : String[4]
+        -correctIndex : int
+    }
+    class QuestionBank {
+        <<Singleton>>
+        -questions : List~Question~
+        -usedIds : Map~Difficulty, Set~
+        +getInstance()$ QuestionBank
+        +nextQuestion(Difficulty) Question
+        +add(Question) void
+        +update(Question) void
+        +delete(id) void
+    }
+    class QuestionStore {
+        -file : Path
+        +load() List~Question~
+        +save(List~Question~) void
+    }
+    class SurpriseEvent {
+        <<interface>>
+        +apply(Game, Piece) void
+        +description() String
+    }
+    class SurpriseFactory {
+        +create(Random)$ SurpriseEvent
+    }
+    class JumpToHome
+    class MoveOpponentBack
+    class BackToCastle
+    class BackThreeSteps
+    class LoseNextTurn
+    class UltraBoostRoll
+    class GameRecord {
+        <<record>>
+        -gameId : int
+        -difficulty : Difficulty
+        -timestamp : LocalDateTime
+        -places : List~String~
+        -duration : Duration
+        +toCsv() String
+    }
+    class HistoryRepository {
+        -file : Path
+        +HEADER : String
+        +append(GameRecord) void
+        +loadAll() List~GameRecord~
+    }
+    class AdminAuth {
+        -file : Path
+        -failedAttempts : int
+        +login(user, password) boolean
+        +changePassword(old, new) void
+        -hash(password, salt) String
+    }
+}
+
+namespace View {
+    class MainFrame {
+        -cards : CardLayout
+        +show(Screen) void
+        +getCurrentScreen() Screen
+        +onCloseRequest(Runnable) void
+    }
+    class Screen {
+        <<enumeration>>
+        MAIN_MENU
+        SETUP
+        GAME
+        HISTORY
+        QUESTIONS
+    }
+    class MainMenuPanel {
+        +onNewGame(listener) void
+        +onHistory(listener) void
+        +onQuestions(listener) void
+        +onExit(listener) void
+    }
+    class GameSetupPanel {
+        -nameFields : List~JTextField~
+        -colorBoxes : List~JComboBox~
+        +getPlayerCount() int
+        +getDifficulty() Difficulty
+        +getNames() List~String~
+        +getColors() List~PlayerColor~
+        +showErrors(SetupValidationResult) void
+        +reset() void
+    }
+    class GameScreenPanel {
+        +showGame(GameSettings) void
+        +setBoard(JComponent) void
+        +onExitToMenu(listener) void
+    }
+    class BoardPanel {
+        -board : Board
+        +onGameChanged(GameEvent) void
+        +highlight(List~Piece~) void
+    }
+    class QuestionDialog {
+        +ask(Question, Player) int
+    }
+    class SurpriseDialog {
+        +show(SurpriseEvent) void
+    }
+    class GameOverPanel {
+        +showResults(List~Player~, Duration, Difficulty) void
+    }
+    class HistoryPanel {
+        +showRecords(List~GameRecord~) void
+    }
+    class AdminLoginPanel {
+        +getUser() String
+        +getPassword() char[]
+    }
+    class QuestionWizardPanel {
+        +showQuestions(List~Question~) void
+    }
+    class PlaceholderPanel {
+        +onBack(listener) void
+    }
+    class Dialogs {
+        +confirm(parent, title, msg, yes, no)$ boolean
+    }
+    class UiTheme {
+        +toAwt(PlayerColor)$ Color
+        +toAwt(Difficulty)$ Color
+        +primaryButton(text)$ JButton
+    }
+}
+
+namespace Controller {
+    class Main {
+        +main(args)$ void
+    }
+    class MainController {
+        -frame : MainFrame
+        -activeGame : GameSettings
+        +showMainMenu() void
+        +showSetup() void
+        +startGame(GameSettings) void
+        +requestExitToMenu() void
+        +requestExitApp() void
+    }
+    class SetupController {
+        -view : GameSetupPanel
+        -validator : GameSetupValidator
+        ~submit() void
+    }
+    class GameController {
+        -game : Game
+        -view : GameScreenPanel
+        +onRoll() void
+        +onPieceClicked(Piece) void
+    }
+    class HistoryController {
+        -repository : HistoryRepository
+        +open() void
+    }
+    class AdminController {
+        -auth : AdminAuth
+        -bank : QuestionBank
+        +login() void
+        +saveQuestion(Question) void
+    }
+}
+
+Player --> PlayerColor
+GameSettings *-- "2..4" Player
+GameSettings --> Difficulty
+GameSetupValidator ..> SetupValidationResult : creates
+SetupValidationResult o-- GameSettings
+LevelConfig --> Difficulty
+LevelRules <|.. EasyRules
+LevelRules <|.. MediumRules
+LevelRules <|.. HardRules
+LevelRules ..> LevelConfig
+Game --> GameSettings
+Game *-- Board
+Game *-- TurnManager
+Game --> LevelRules : Strategy
+Game o-- GameObserver : Observer
+Game --> MoveValidator
+Game --> Dice
+Board *-- "1..3" Track
+Board *-- Square
+Square --> SquareType
+Piece --> Square
+Piece --> Player
+Game *-- "8..16" Piece
+MoveValidator ..> Move : creates
+Dice ..> DiceRoll : creates
+QuestionBank o-- Question
+QuestionBank --> QuestionStore
+SurpriseFactory ..> SurpriseEvent : creates
+SurpriseEvent <|.. JumpToHome
+SurpriseEvent <|.. MoveOpponentBack
+SurpriseEvent <|.. BackToCastle
+SurpriseEvent <|.. BackThreeSteps
+SurpriseEvent <|.. LoseNextTurn
+SurpriseEvent <|.. UltraBoostRoll
+HistoryRepository ..> GameRecord
+
+MainFrame *-- MainMenuPanel
+MainFrame *-- GameSetupPanel
+MainFrame *-- GameScreenPanel
+MainFrame *-- PlaceholderPanel
+MainFrame *-- HistoryPanel
+MainFrame *-- QuestionWizardPanel
+MainFrame *-- AdminLoginPanel
+MainFrame --> Screen
+GameScreenPanel *-- BoardPanel
+GameObserver <|.. BoardPanel
+GameScreenPanel ..> QuestionDialog
+GameScreenPanel ..> SurpriseDialog
+MainFrame *-- GameOverPanel
+
+Main ..> MainFrame : creates
+Main ..> MainController : creates
+MainController --> MainFrame
+MainController *-- SetupController
+MainController --> GameController
+MainController --> HistoryController
+MainController --> AdminController
+MainController ..> Dialogs
+SetupController --> GameSetupPanel
+SetupController --> GameSetupValidator
+GameController --> Game
+GameController --> GameScreenPanel
+GameController --> QuestionBank
+GameController --> SurpriseFactory
+GameController --> HistoryRepository
+HistoryController --> HistoryPanel
+HistoryController --> HistoryRepository
+AdminController --> AdminAuth
+AdminController --> QuestionBank
+AdminController --> QuestionWizardPanel
+
+style Difficulty fill:#d4f0dc,stroke:#2E9E5B
+style PlayerColor fill:#d4f0dc,stroke:#2E9E5B
+style Player fill:#d4f0dc,stroke:#2E9E5B
+style GameSettings fill:#d4f0dc,stroke:#2E9E5B
+style GameSetupValidator fill:#d4f0dc,stroke:#2E9E5B
+style SetupValidationResult fill:#d4f0dc,stroke:#2E9E5B
+style MainFrame fill:#d4f0dc,stroke:#2E9E5B
+style Screen fill:#d4f0dc,stroke:#2E9E5B
+style MainMenuPanel fill:#d4f0dc,stroke:#2E9E5B
+style GameSetupPanel fill:#d4f0dc,stroke:#2E9E5B
+style GameScreenPanel fill:#d4f0dc,stroke:#2E9E5B
+style PlaceholderPanel fill:#d4f0dc,stroke:#2E9E5B
+style Dialogs fill:#d4f0dc,stroke:#2E9E5B
+style UiTheme fill:#d4f0dc,stroke:#2E9E5B
+style Main fill:#d4f0dc,stroke:#2E9E5B
+style MainController fill:#d4f0dc,stroke:#2E9E5B
+style SetupController fill:#d4f0dc,stroke:#2E9E5B
