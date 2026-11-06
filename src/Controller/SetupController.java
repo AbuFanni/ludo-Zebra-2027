@@ -22,6 +22,26 @@ public class SetupController {
     void bind() {
         view.getStartButton().addActionListener(e -> onStart());
         view.getBackButton().addActionListener(e -> main.showMenu());
+        view.onInputChanged(this::onInputChanged);
+    }
+
+    /**
+     * אחרי שהוצגו שגיאות, כל שינוי בשדות בודק שוב ומעדכן את ההודעות, כך שהודעה נעלמת ברגע
+     * שהשדה תוקן (FR-06). לפני הלחיצה הראשונה על "התחל משחק" לא מציגים שגיאות על טופס ריק.
+     *
+     * @author Nimer Ziad (Zebra) – Iteration 1, SDP table 2
+     */
+    private void onInputChanged() {
+        if (!view.hasErrors()) {
+            return;
+        }
+        SetupValidationResult result = GameSetupValidator.validate(
+                view.getPlayerCount(), view.getDifficulty(), view.getNames(), view.getColors());
+        if (result.isValid()) {
+            view.clearErrors();
+        } else {
+            view.showErrors(result, false);
+        }
     }
 
     private void onStart() {
