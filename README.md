@@ -10,14 +10,17 @@ Java (Swing), ארכיטקטורת MVC בחבילות `Model`, `View` ו-`Contro
 
 - **Windows:** לחיצה כפולה על `run.bat` (או `java -jar Ludo-Zebra.jar`).
 - **macOS / Linux:** `./run.sh`.
-- צריך Java 8 ומעלה. הקוד מתקמפל ל-Java 8, ולכן ה-JAR רץ גם על מחשבים עם Java ישנה.
+- צריך Java 17 ומעלה (NFR-05), להורדה: https://adoptium.net. עם Java ישנה יותר מופיעה השגיאה `UnsupportedClassVersionError`.
+- ה-JAR משתמש רק בנתיבים יחסיים לתיקייה שלו (NFR-16), ולכן אפשר להעתיק את התיקייה לכל מחשב.
 - קובץ ההיסטוריה `History-DataBase.csv` נוצר ליד ה-JAR בסוף המשחק הראשון.
 
 ## בנייה
 
 - **Eclipse:** File → Import → Existing Projects into Workspace, ובוחרים את התיקייה. מקורות ב-`src`, בדיקות ב-`test`.
   הרצה: `Controller.Main`. ייצוא JAR: File → Export → Runnable JAR file.
-- **שורת פקודה:** `./build.sh` מקמפל, מריץ את בדיקות המודל ובונה את `Ludo-Zebra.jar`.
+- **שורת פקודה:** צריך JDK 17 ומעלה. `./build.sh` (macOS, Linux, Git Bash) או `build.bat` (Windows)
+  מקמפל ל-Java 17, מריץ את בדיקות המודל ובונה את `Ludo-Zebra.jar`.
+  אם `javac` לא ב-PATH, מגדירים קודם `JAVA_HOME` לתיקיית ה-JDK.
 
 ## מבנה הקוד וחלוקה לפי ה-SDP
 
@@ -33,15 +36,16 @@ Java (Swing), ארכיטקטורת MVC בחבילות `Model`, `View` ו-`Contro
 | `Model` | `Game`, `GamePhase`, `Pawn`, `Move`, `MoveResult`, `RollResult`, `GameListener`, `Die`, `StepDie` | FR-15, FR-19 עד FR-23 | וסים |
 | `Controller` | `GameController` | חיבור מסך המשחק למודל | מוחמד, וסים |
 | `Model` / `View` / `Controller` | `HistoryRepository`, `GameRecord`, `HistoryPanel`, `HistoryController` | היסטוריה ב-CSV (מעבר לאיטרציה 1) | לפי חלוקת איטרציה 3 |
-| — | `build.sh`, `run.bat`, `run.sh` | NFR-08 (JAR שרץ על כל מחשב) | וסים (Scrum master) |
+| — | `build.sh`, `build.bat`, `run.bat`, `run.sh` | NFR-08 (JAR שרץ על כל מחשב) | וסים (Scrum master) |
 | `test` | `ModelTests` | בדיקות יחידה | כל אחד לחלק שלו |
 
 ## תבניות עיצוב
 
 - **MVC:** המודל לא מכיר את Swing. ה-View מצייר ומדווח על לחיצות, וה-Controller מחליט מה קורה.
 - **Observer:** `Game` מודיע ל-`GameListener` (ה-`GameController`) על הטלה, מהלך, תור וסיום.
-- **Factory Method:** `SquareFactory` יוצר את סוג המשבצת הנכון.
-- **Builder:** `BoardBuilder` בונה את הלוח של כל רמה.
+- **Factory Method:** `SquareFactory` יוצר את סוג המשבצת הנכון, ו-`BoardBuilder.build(difficulty)` יוצר את הלוח
+  לפי רמת הקושי (המקום שה-SDP הגדיר ליצירת לוח לפי רמה).
+- **Builder:** `BoardBuilder` בונה את הלוח של כל רמה שלב אחר שלב.
 - **Strategy:** `Die` מאפשר להחליף קובייה (רגילה, Boost, UltraBoost, או קבועה בבדיקות).
 - **Repository:** `HistoryRepository` מסתיר את פורמט קובץ ה-CSV משאר המערכת.
 
