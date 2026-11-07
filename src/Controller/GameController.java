@@ -115,7 +115,7 @@ public class GameController implements GameListener {
         if (roll > left) {
             return "כדי להיכנס לבית צריך בדיוק " + left;
         }
-        return "Double Block חוסם את הדרך – הזיזו כלי אחר שיכול לזוז את כל הצעדים";
+        return "Double Block חוסם את הדרך – הזיזו כלי אחר";
     }
 
     private void updateClock() {
