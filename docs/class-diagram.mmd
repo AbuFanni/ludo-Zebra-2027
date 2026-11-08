@@ -26,6 +26,7 @@ namespace Controller {
     -GameSetupPanel view
     -MainController main
     ~bind()
+    -onInputChanged()
     -onStart()
   }
   class GameController {
@@ -79,7 +80,10 @@ namespace View {
     +getNames() List~String~
     +getColors() List~PlayerColor~
     +showErrors(SetupValidationResult r)
+    +showErrors(SetupValidationResult r, boolean moveFocus)
     +clearErrors()
+    +hasErrors() boolean
+    +onInputChanged(Runnable action)
   }
   class GameScreenPanel {
     -BoardPanel boardPanel
@@ -226,11 +230,14 @@ namespace Model {
     +move(Move m) MoveResult
     +legalMoveFor(Pawn p) Move
     +isBlockedFor(Square s, Player mover) boolean
+    +canLeaveBase(Player p) boolean
+    +hasExitAndBoardChoice() boolean
     +squareOf(Pawn p) Square
     +pawnsAt(Square s) List~Pawn~
     +getRanking() List~Player~
     +addListener(GameListener l)
     ~computeLegalMoves(Player p, int value) List~Move~
+    ~captureAt(Pawn mover) List~Pawn~
   }
   class GameListener {
     <<interface>>
@@ -294,6 +301,7 @@ namespace Model {
   }
   class GameSetupValidator {
     +validate(int count, Difficulty d, List~String~ names, List~PlayerColor~ colors) SetupValidationResult$
+    ~nameLength(String name) int$
   }
   class SetupValidationResult {
     -Map~Integer,String~ nameErrors
