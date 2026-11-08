@@ -8,12 +8,12 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * Tests for the step die (FR-15).
+ * Tests for the step die (FR-15) and for passing the turn (FR-19).
  * <p>
  * Each test name starts with the FR it checks, as in the acceptance tests. The tests run together
  * with the other model tests ({@link ModelTests}) through build.sh / build.bat.
  *
- * @author Waseem Abu Fanna (Zebra) – Iteration 1, SDP table 2 (FR-15)
+ * @author Waseem Abu Fanna (Zebra) – Iteration 1, SDP table 2 (FR-15, FR-19)
  */
 final class DieAndTurnTests {
 
@@ -27,6 +27,10 @@ final class DieAndTurnTests {
         ModelTests.run("FR-15 step die gives only 1 to 6, and every face comes up", DieAndTurnTests::onlyOneToSix);
         ModelTests.run("FR-15 step die: equal chance for every face (NFR-11: 5 x 60,000 rolls, chi-square)", DieAndTurnTests::equalChance);
         ModelTests.run("FR-15 one roll throws the die once, and the game reports the value", DieAndTurnTests::reportsValue);
+        ModelTests.run("FR-19 roll 1 to 5 with all pieces in the castle: turn passes", DieAndTurnTests::passWithAllInCastle);
+        ModelTests.run("FR-19 pieces on the board but none can move: turn passes", DieAndTurnTests::passWhenNoPieceCanMove);
+        ModelTests.run("FR-19 piece right in front of a Double Block: turn passes", DieAndTurnTests::passWhenBlocked);
+        ModelTests.run("FR-19 a 6 with no move keeps the turn; the next 1 to 5 passes it", DieAndTurnTests::sixKeepsTurn);
     }
 
     // ------------------------------------------------------------- helpers
@@ -54,6 +58,26 @@ final class DieAndTurnTests {
             players.add(new Player("P" + (i + 1), colors[i], i));
         }
         return new Game(board, players, die, () -> 0L);
+    }
+
+    private static Game greenBlue(int... rolls) {
+        return game(new ScriptedDie(rolls), PlayerColor.GREEN, PlayerColor.BLUE);
+    }
+
+    private static PlayerColor turn(Game g) {
+        return g.getCurrentPlayer().getColor();
+    }
+
+    /** Records the names of the players the turn passed to. */
+    private static List<String> recordTurns(Game g) {
+        final List<String> turns = new ArrayList<String>();
+        g.addListener(new GameListener() {
+            @Override
+            public void onTurnChanged(Player current) {
+                turns.add(current.getName());
+            }
+        });
+        return turns;
     }
 
     // ------------------------------------------------------------- FR-15
@@ -116,4 +140,72 @@ final class DieAndTurnTests {
         checkEq("[4]", shown.toString(), "value sent to the screen");
     }
 
+    // ------------------------------------------------------------- FR-19
+
+    private static void passWithAllInCastle() {
+        for (int v = 1; v <= 5; v++) {
+            Game g = greenBlue(v);
+            List<String> turns = recordTurns(g);
+            RollResult r = g.roll();
+            check(!r.hasMoves(), v + ": no move");
+            check(!r.isRollAgain(), v + ": no extra roll");
+            checkEq(PlayerColor.BLUE, turn(g), v + ": turn passed");
+            checkEq(GamePhase.ROLL, g.getPhase(), v + ": blue rolls next");
+            check(g.getLegalMoves().isEmpty(), v + ": no moves left over");
+            checkEq("[P2]", turns.toString(), v + ": screen told once");
+        }
+    }
+
+    /**
+     * All pieces are 2 squares from home: 3 to 5 is too much (an exact roll is needed), and no piece
+     * is in the castle.
+     */
+    private static void passWhenNoPieceCanMove() {
+        for (int v = 3; v <= 5; v++) {
+            Game g = greenBlue(v);
+            int finish = g.getBoard().getFinishIndex();
+            for (Pawn p : g.getPlayers().get(0).getPawns()) {
+                p.setPathIndex(finish - 2);
+            }
+            RollResult r = g.roll();
+            check(!r.hasMoves(), v + ": no move");
+            checkEq(PlayerColor.BLUE, turn(g), v + ": turn passed");
+        }
+    }
+
+    /**
+     * The only piece on the board is on the square just before an opponent's Double Block: it cannot
+     * pass the block, and stopping before it would mean not moving at all.
+     */
+    private static void passWhenBlocked() {
+        Game g = greenBlue(4);
+        Board b = g.getBoard();
+        Square blockSquare = b.getPath(PlayerColor.GREEN).get(10);
+        int blueIndex = b.getPath(PlayerColor.BLUE).indexOf(blockSquare);
+        g.getPlayers().get(1).getPawns().get(0).setPathIndex(blueIndex);
+        g.getPlayers().get(1).getPawns().get(1).setPathIndex(blueIndex);
+        g.getPlayers().get(0).getPawns().get(0).setPathIndex(9);
+        check(g.isBlockedFor(blockSquare, g.getPlayers().get(0)), "blue block in front of green");
+        RollResult r = g.roll();
+        check(!r.hasMoves(), "no move");
+        checkEq(PlayerColor.BLUE, turn(g), "turn passed");
+    }
+
+    /**
+     * All pieces are 1 square from home: a 6 with no move gives another roll (FR-17), and the 2
+     * after it passes the turn.
+     */
+    private static void sixKeepsTurn() {
+        Game g = greenBlue(6, 2);
+        int finish = g.getBoard().getFinishIndex();
+        for (Pawn p : g.getPlayers().get(0).getPawns()) {
+            p.setPathIndex(finish - 1);
+        }
+        RollResult six = g.roll();
+        check(!six.hasMoves() && six.isRollAgain(), "6 without a move rolls again");
+        checkEq(PlayerColor.GREEN, turn(g), "turn kept after 6");
+        RollResult two = g.roll();
+        check(!two.hasMoves() && !two.isRollAgain(), "2 without a move");
+        checkEq(PlayerColor.BLUE, turn(g), "turn passed after 2");
+    }
 }
