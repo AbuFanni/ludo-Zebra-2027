@@ -30,7 +30,12 @@ final class DieAndTurnTests {
         ModelTests.run("FR-19 roll 1 to 5 with all pieces in the castle: turn passes", DieAndTurnTests::passWithAllInCastle);
         ModelTests.run("FR-19 pieces on the board but none can move: turn passes", DieAndTurnTests::passWhenNoPieceCanMove);
         ModelTests.run("FR-19 piece right in front of a Double Block: turn passes", DieAndTurnTests::passWhenBlocked);
+        ModelTests.run("FR-19 after a move with 1 to 5 the turn passes", DieAndTurnTests::passAfterMove);
         ModelTests.run("FR-19 a 6 with no move keeps the turn; the next 1 to 5 passes it", DieAndTurnTests::sixKeepsTurn);
+        ModelTests.run("FR-19 turn order wraps from the last player to the first", DieAndTurnTests::orderWraps);
+        ModelTests.run("FR-19 a player who finished is skipped", DieAndTurnTests::finishedSkipped);
+        ModelTests.run("FR-19 the next player's sixes are counted from zero", DieAndTurnTests::sixCountResets);
+        ModelTests.run("FR-19 no move before rolling, no second roll before moving", DieAndTurnTests::oneRollOneMove);
     }
 
     // ------------------------------------------------------------- helpers
@@ -78,6 +83,16 @@ final class DieAndTurnTests {
             }
         });
         return turns;
+    }
+
+    private static void expectThrows(Class<? extends Throwable> type, Runnable action, String what) {
+        try {
+            action.run();
+        } catch (Throwable t) {
+            check(type.isInstance(t), what + ": expected " + type.getSimpleName() + " but got " + t);
+            return;
+        }
+        throw new AssertionError(what + ": expected " + type.getSimpleName() + ", nothing was thrown");
     }
 
     // ------------------------------------------------------------- FR-15
@@ -191,6 +206,19 @@ final class DieAndTurnTests {
         checkEq(PlayerColor.BLUE, turn(g), "turn passed");
     }
 
+    private static void passAfterMove() {
+        for (int v = 1; v <= 5; v++) {
+            Game g = greenBlue(v);
+            Pawn p = g.getPlayers().get(0).getPawns().get(0);
+            p.setPathIndex(5);
+            g.roll();
+            MoveResult res = g.move(g.legalMoveFor(p));
+            check(!res.isExtraTurn(), v + ": no extra roll");
+            checkEq(5 + v, p.getPathIndex(), v + ": moved " + v);
+            checkEq(PlayerColor.BLUE, turn(g), v + ": turn passed");
+        }
+    }
+
     /**
      * All pieces are 1 square from home: a 6 with no move gives another roll (FR-17), and the 2
      * after it passes the turn.
@@ -207,5 +235,85 @@ final class DieAndTurnTests {
         RollResult two = g.roll();
         check(!two.hasMoves() && !two.isRollAgain(), "2 without a move");
         checkEq(PlayerColor.BLUE, turn(g), "turn passed after 2");
+    }
+
+    /**
+     * 4 players, all in the castle, always rolling 1: the turn follows the entry order and wraps
+     * back to the first player (FR-07).
+     */
+    private static void orderWraps() {
+        Game g = game(new ScriptedDie(1), PlayerColor.GREEN, PlayerColor.YELLOW, PlayerColor.BLUE, PlayerColor.RED);
+        List<String> turns = recordTurns(g);
+        for (int i = 0; i < 5; i++) {
+            g.roll();
+        }
+        checkEq("[P2, P3, P4, P1, P2]", turns.toString(), "turn order");
+        checkEq(PlayerColor.YELLOW, turn(g), "back to the second player");
+    }
+
+    /**
+     * 3 players. Yellow has one piece left, 1 square from home; it finishes, and later turns skip
+     * yellow.
+     */
+    private static void finishedSkipped() {
+        Game g = game(new ScriptedDie(1), PlayerColor.GREEN, PlayerColor.YELLOW, PlayerColor.BLUE);
+        int finish = g.getBoard().getFinishIndex();
+        Player yellow = g.getPlayers().get(1);
+        for (Pawn p : yellow.getPawns()) {
+            p.setPathIndex(finish);
+        }
+        yellow.getPawns().get(3).setPathIndex(finish - 1);
+
+        g.roll(); // green: 1, all pieces in the castle
+        checkEq(PlayerColor.YELLOW, turn(g), "yellow's turn");
+        g.roll();
+        MoveResult res = g.move(g.legalMoveFor(yellow.getPawns().get(3)));
+        check(res.isPlayerFinished(), "yellow finished");
+        check(!res.isGameOver(), "two players still play");
+        checkEq(PlayerColor.BLUE, turn(g), "blue after yellow finished");
+        g.roll(); // blue: 1, all pieces in the castle
+        checkEq(PlayerColor.GREEN, turn(g), "green after blue");
+        g.roll(); // green: 1
+        checkEq(PlayerColor.BLUE, turn(g), "yellow skipped");
+    }
+
+    /**
+     * Green rolls two 6s in a row and finishes, so the turn passes while green's count of 6s is at 2.
+     * Yellow's first 6 must count as its first, not a third in a row (FR-18 counts each player
+     * separately).
+     */
+    private static void sixCountResets() {
+        Game g = game(new ScriptedDie(6), PlayerColor.GREEN, PlayerColor.YELLOW, PlayerColor.BLUE);
+        int finish = g.getBoard().getFinishIndex();
+        Player green = g.getPlayers().get(0);
+        for (Pawn p : green.getPawns()) {
+            p.setPathIndex(finish);
+        }
+        Pawn last = green.getPawns().get(3);
+        last.setPathIndex(finish - 12);
+
+        g.roll();
+        check(g.move(g.legalMoveFor(last)).isExtraTurn(), "first 6: extra roll");
+        g.roll();
+        check(g.move(g.legalMoveFor(last)).isPlayerFinished(), "second 6: green finished");
+        checkEq(PlayerColor.YELLOW, turn(g), "turn passed to yellow");
+
+        RollResult yellowSix = g.roll();
+        check(!yellowSix.isCancelledThirdSix(), "yellow's first 6 is not a third 6");
+        check(yellowSix.hasMoves(), "yellow may leave the castle");
+        checkEq(PlayerColor.YELLOW, turn(g), "still yellow");
+    }
+
+    private static void oneRollOneMove() {
+        ScriptedDie die = new ScriptedDie(6);
+        Game g = game(die, PlayerColor.GREEN, PlayerColor.BLUE);
+        Pawn pawn = g.getPlayers().get(0).getPawns().get(0);
+        expectThrows(IllegalStateException.class,
+                () -> g.move(new Move(pawn, Pawn.IN_BASE, 0, false)), "move before rolling");
+        g.roll();
+        checkEq(GamePhase.MOVE, g.getPhase(), "waiting for a move");
+        expectThrows(IllegalStateException.class, g::roll, "second roll before moving");
+        checkEq(1, die.throwsCount, "die thrown only once");
+        checkEq(PlayerColor.GREEN, turn(g), "still green");
     }
 }
