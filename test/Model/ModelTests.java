@@ -45,6 +45,7 @@ public final class ModelTests {
         SetupValidationTests.runAll();
         BoardSpecialSquaresTests.runAll();
         CastleExitTests.runAll();
+        CaptureTests.runAll();
 
         System.out.println();
         System.out.println(passed + " passed, " + failures.size() + " failed");
