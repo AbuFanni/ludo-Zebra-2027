@@ -314,7 +314,7 @@ public class Game {
 
         for (Pawn pawn : player.getPawns()) {
             if (pawn.isInBase()) {
-                if (value == 6 && !baseMoveAdded && !isBlockedFor(path.get(0), player)) {
+                if (value == 6 && !baseMoveAdded && canLeaveBase(player)) {
                     full.add(new Move(pawn, Pawn.IN_BASE, 0, false));
                     baseMoveAdded = true;
                 }
@@ -342,6 +342,38 @@ public class Game {
             }
         }
         return full.isEmpty() ? partial : full;
+    }
+
+    /**
+     * האם כלי של השחקן יכול לצאת עכשיו מהטירה למשבצת ההתחלה (#) שלו, בהנחה שיצא 6 (FR-20).
+     * <p>
+     * זו הנקודה היחידה שמחליטה על יציאה מהטירה. היום היא בודקת רק את FR-36: אי אפשר לצאת כשעל ה-#
+     * יש Double Block של יריב. חוקים נוספים ליציאה (למשל באיטרציות הבאות) נכנסים כאן.
+     *
+     * @param player השחקן שבתור
+     * @return true אם מותר להוציא כלי מהטירה
+     * @author Nimer Ziad (Zebra) – Iteration 1, SDP table 2 (FR-36 check: Wasim)
+     */
+    public boolean canLeaveBase(Player player) {
+        Square start = board.getPath(player.getColor()).get(0);
+        return !isBlockedFor(start, player);
+    }
+
+    /**
+     * @return true אם יש במהלכים החוקיים גם יציאה מהטירה וגם תזוזה של כלי על הלוח, כלומר השחקן
+     *         צריך לבחור (FR-20)
+     */
+    public boolean hasExitAndBoardChoice() {
+        boolean exit = false;
+        boolean onBoard = false;
+        for (Move m : legalMoves) {
+            if (m.getFrom() == Pawn.IN_BASE) {
+                exit = true;
+            } else {
+                onBoard = true;
+            }
+        }
+        return exit && onBoard;
     }
 
     private boolean allFinished(Player player) {
