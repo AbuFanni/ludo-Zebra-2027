@@ -3,7 +3,6 @@ package View;
 import java.awt.CardLayout;
 import java.awt.ComponentOrientation;
 import java.awt.Dimension;
-import java.awt.Image;
 import java.awt.Toolkit;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
@@ -18,6 +17,8 @@ import javax.swing.WindowConstants;
  * @author Nour Eldin Khatib (Zebra) – Iteration 1, SDP table 2
  */
 public class MainFrame extends JFrame {
+
+    private static final long serialVersionUID = 1L;
 
     public static final String MENU = "menu";
     public static final String SETUP = "setup";
@@ -45,10 +46,8 @@ public class MainFrame extends JFrame {
         root.add(questionsPanel, QUESTIONS);
         setContentPane(root);
         applyComponentOrientation(ComponentOrientation.RIGHT_TO_LEFT);
-        Image logo = Images.logo();
-        if (logo != null) {
-            setIconImage(logo);
-        }
+        setIconImages(ZebraArt.windowIcons());
+        root.setBackground(UiTheme.BACKGROUND);
         Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
         int w = Math.min(1280, Math.max(900, screen.width - 80));
         int h = Math.min(860, Math.max(640, screen.height - 80));
