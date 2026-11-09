@@ -125,10 +125,20 @@ namespace View {
     +info(Component p, String title, String msg)$
   }
   class UiTheme {
+    +Color INK$
+    +Color ACCENT$
     +toAwt(PlayerColor c) Color$
     +light(PlayerColor c) Color$
     +question(QuestionLevel l) Color$
     +primaryButton(String text) JButton$
+    +secondaryButton(String text) JButton$
+    +quietButton(String text) JButton$
+  }
+  class ZebraArt {
+    +paintStripes(Graphics2D g, double w, double h, double spacing, double angle, long seed, Color ink)$
+    +pawn(double x, double y, double h) Shape$
+    +paintLogo(Graphics2D g, double x, double y, double size)$
+    +windowIcons() List~Image~$
   }
   class Images {
     +dice(int value) Image$
@@ -346,6 +356,10 @@ MainFrame *-- GameSetupPanel
 MainFrame *-- GameScreenPanel
 MainFrame *-- HistoryPanel
 MainFrame *-- PlaceholderPanel
+MainFrame ..> ZebraArt : icon
+MainMenuPanel ..> ZebraArt : draws
+PlaceholderPanel ..> ZebraArt : draws
+Dialogs ..> ZebraArt : icon
 GameScreenPanel *-- BoardPanel
 BoardPanel --> PawnClickListener
 BoardPanel ..> Game : reads

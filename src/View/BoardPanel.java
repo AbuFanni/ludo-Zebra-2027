@@ -257,7 +257,7 @@ public class BoardPanel extends JPanel {
                         Color.BLACK, 0.35), Font.BOLD, 0.62);
                 break;
             case SURPRISE:
-                drawGift(g, r);
+                drawCenteredText(g, "!", r, UiTheme.SURPRISE, Font.BOLD, 0.62);
                 break;
             default:
                 break;
@@ -302,23 +302,6 @@ public class BoardPanel extends JPanel {
         head.addPoint((int) (headBaseX + px * w), (int) (headBaseY + py * w));
         head.addPoint((int) (headBaseX - px * w), (int) (headBaseY - py * w));
         g.fillPolygon(head);
-    }
-
-    private void drawGift(Graphics2D g, Rectangle r) {
-        int pad = r.width / 4;
-        int x = r.x + pad;
-        int y = r.y + pad + r.height / 10;
-        int w = r.width - 2 * pad;
-        int h = r.height - 2 * pad - r.height / 10;
-        g.setColor(UiTheme.SURPRISE);
-        g.fillRect(x, y, w, h);
-        g.setColor(Color.WHITE);
-        g.fillRect(x + w / 2 - Math.max(1, w / 10), y, Math.max(2, w / 5), h);
-        g.fillRect(x, y + h / 3, w, Math.max(2, h / 6));
-        g.setColor(UiTheme.SURPRISE);
-        g.setStroke(new BasicStroke(Math.max(1.5f, r.width * 0.06f)));
-        g.drawOval(x + w / 2 - w / 3, y - h / 3, w / 3, h / 3);
-        g.drawOval(x + w / 2, y - h / 3, w / 3, h / 3);
     }
 
     private static void drawCenteredText(Graphics2D g, String text, Rectangle r, Color color, int style, double scale) {

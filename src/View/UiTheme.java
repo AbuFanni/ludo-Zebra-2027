@@ -1,13 +1,18 @@
 package View;
 
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.GraphicsEnvironment;
+import java.awt.geom.RoundRectangle2D;
 import java.util.Arrays;
 import java.util.List;
 import javax.swing.BorderFactory;
+import javax.swing.ButtonModel;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 
@@ -15,45 +20,72 @@ import Model.PlayerColor;
 import Model.QuestionLevel;
 
 /**
- * הצבעים, הגופנים והכפתורים המשותפים לכל המסכים, כדי שכל המסכים ייראו אותו דבר.
+ * העיצוב המשותף לכל המסכים: הצבעים, הגופנים והכפתורים של הזהות של קבוצת Zebra.
+ * <p>
+ * הזהות: שחור ולבן של פסי זברה, וצבע דגש אחד, זהב של שמש הסוואנה, לפוקוס ולמעבר עכבר.
+ * כל המסכים משתמשים בקבועים ובכפתורים מכאן, כך ששינוי כאן מעדכן את כל המערכת.
+ * צבעי השחקנים והלוח נשארים הצבעים הרגילים של לודו.
  *
  * @author Nour Eldin Khatib (Zebra) – Iteration 1, SDP table 2
  */
 public final class UiTheme {
 
-    public static final Color BACKGROUND = new Color(0xF6F1E7);
-    public static final Color SURFACE = Color.WHITE;
-    public static final Color PRIMARY = new Color(0x1F3A5F);
-    public static final Color ACCENT = new Color(0xE0A100);
-    public static final Color TEXT = new Color(0x22262E);
-    public static final Color MUTED = new Color(0x6B7280);
+    /** השחור של פסי הזברה. */
+    public static final Color INK = new Color(0x121212);
+    /** הלבן של פסי הזברה. */
+    public static final Color PAPER = Color.WHITE;
+
+    public static final Color BACKGROUND = new Color(0xF1F1EC);
+    public static final Color SURFACE = PAPER;
+    public static final Color PRIMARY = INK;
+    /** זהב של שמש הסוואנה: הלוגו, פוקוס ומעבר עכבר. */
+    public static final Color ACCENT = new Color(0xE3A417);
+    public static final Color TEXT = new Color(0x1C1C1C);
+    public static final Color MUTED = new Color(0x66665F);
     public static final Color ERROR = new Color(0xC62828);
     public static final Color LINE = new Color(0x3A3A3A);
     public static final Color BOARD_BG = new Color(0xFFFDF8);
     public static final Color SURPRISE = new Color(0x7B3FA0);
 
+    private static final List<String> INSTALLED = Arrays.asList(
+            GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames());
     private static final String FONT_FAMILY = pickFont();
 
+    /** הכותרת הגדולה של מסך הפתיחה. */
+    public static final Font DISPLAY = displayFont(52);
     public static final Font TITLE = new Font(FONT_FAMILY, Font.BOLD, 34);
     public static final Font HEADING = new Font(FONT_FAMILY, Font.BOLD, 22);
     public static final Font SUBTITLE = new Font(FONT_FAMILY, Font.PLAIN, 17);
     public static final Font BODY = new Font(FONT_FAMILY, Font.PLAIN, 15);
     public static final Font SMALL = new Font(FONT_FAMILY, Font.PLAIN, 13);
-    public static final Font BUTTON = new Font(FONT_FAMILY, Font.BOLD, 16);
+    public static final Font BUTTON = semiboldFont(16);
 
     private UiTheme() {
     }
 
     /** בוחר גופן שקיים במחשב ותומך בעברית. */
     private static String pickFont() {
-        List<String> installed = Arrays.asList(
-                GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames());
         for (String f : new String[]{"Segoe UI", "Arial", "Tahoma", "Rubik", "Heebo", "DejaVu Sans"}) {
-            if (installed.contains(f)) {
+            if (INSTALLED.contains(f)) {
                 return f;
             }
         }
         return Font.SANS_SERIF;
+    }
+
+    /** גופן כבד לכותרת: Segoe UI Black ב-Windows, ובמחשבים אחרים הגופן הרגיל בעובי Bold. */
+    private static Font displayFont(int size) {
+        if (INSTALLED.contains("Segoe UI Black")) {
+            return new Font("Segoe UI Black", Font.PLAIN, size);
+        }
+        return new Font(FONT_FAMILY, Font.BOLD, size);
+    }
+
+    private static Font semiboldFont(int size) {
+        if (INSTALLED.contains("Segoe UI Semibold")) {
+            return new Font("Segoe UI Semibold", Font.PLAIN, size);
+        }
+        return new Font(FONT_FAMILY, Font.BOLD, size);
     }
 
     /** @return צבע המסך של צבע השחקן */
@@ -106,31 +138,100 @@ public final class UiTheme {
         return l;
     }
 
-    /** כפתור ראשי, בצבע הכחול של המשחק. */
+    /** כפתור ראשי: שחור עם טקסט לבן. */
     public static JButton primaryButton(String text) {
-        return button(text, PRIMARY, Color.WHITE);
+        return new ZebraButton(text, ZebraButton.Style.PRIMARY);
     }
 
-    /** כפתור משני, לבן עם מסגרת. */
+    /** כפתור משני: לבן עם מסגרת שחורה. */
     public static JButton secondaryButton(String text) {
-        JButton b = button(text, SURFACE, PRIMARY);
-        b.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(PRIMARY, 2),
-                BorderFactory.createEmptyBorder(8, 18, 8, 18)));
-        return b;
+        return new ZebraButton(text, ZebraButton.Style.SECONDARY);
     }
 
-    private static JButton button(String text, Color bg, Color fg) {
-        JButton b = new JButton(text);
-        b.setFont(BUTTON);
-        b.setBackground(bg);
-        b.setForeground(fg);
-        b.setFocusPainted(false);
-        b.setOpaque(true);
-        b.setContentAreaFilled(true);
-        b.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
-        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        b.setPreferredSize(new Dimension(260, 48));
-        return b;
+    /** כפתור שקט, בלי רקע, לפעולות כמו יציאה. */
+    public static JButton quietButton(String text) {
+        return new ZebraButton(text, ZebraButton.Style.QUIET);
+    }
+
+    /**
+     * כפתור מעוגל שמצויר בקוד, עם מצב מעבר עכבר, לחיצה, מושבת ופוקוס מקלדת (טבעת זהב).
+     */
+    static final class ZebraButton extends JButton {
+
+        private static final long serialVersionUID = 1L;
+        private static final int ARC = 12;
+
+        enum Style { PRIMARY, SECONDARY, QUIET }
+
+        private final Style style;
+
+        ZebraButton(String text, Style style) {
+            super(text);
+            this.style = style;
+            setFont(BUTTON);
+            setFocusPainted(false);
+            setContentAreaFilled(false);
+            setBorderPainted(false);
+            setOpaque(false);
+            setRolloverEnabled(true);
+            setBorder(BorderFactory.createEmptyBorder(10, 22, 10, 22));
+            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            setPreferredSize(new Dimension(280, 50));
+            setForeground(style == Style.PRIMARY ? PAPER : INK);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            ZebraArt.smooth(g2);
+            ButtonModel m = getModel();
+            double w = getWidth();
+            double h = getHeight();
+            RoundRectangle2D.Double shape = new RoundRectangle2D.Double(2, 2, w - 4, h - 4, ARC, ARC);
+
+            Color fill = null;
+            Color outline = null;
+            Color text = INK;
+            switch (style) {
+                case PRIMARY:
+                    fill = !isEnabled() ? new Color(0xB9B9B3) : m.isPressed() ? Color.BLACK
+                            : m.isRollover() ? new Color(0x2B2B2B) : INK;
+                    text = PAPER;
+                    break;
+                case SECONDARY:
+                    fill = m.isPressed() ? new Color(0xE4E4DE) : m.isRollover() ? new Color(0xF4F4EF) : PAPER;
+                    outline = isEnabled() ? INK : new Color(0xB9B9B3);
+                    text = isEnabled() ? INK : MUTED;
+                    break;
+                case QUIET:
+                default:
+                    fill = m.isRollover() || m.isPressed() ? new Color(0xE6E6E0) : null;
+                    text = m.isRollover() ? INK : MUTED;
+                    break;
+            }
+            if (fill != null) {
+                g2.setColor(fill);
+                g2.fill(shape);
+            }
+            if (outline != null) {
+                g2.setColor(outline);
+                g2.setStroke(new BasicStroke(1.6f));
+                g2.draw(shape);
+            }
+            if (m.isRollover() && isEnabled() && style != Style.QUIET) {
+                // פס זהב קצר בתחתית הכפתור במעבר עכבר
+                g2.setColor(ACCENT);
+                double bw = Math.min(56, w * 0.25);
+                g2.fill(new RoundRectangle2D.Double((w - bw) / 2, h - 7, bw, 3, 3, 3));
+            }
+            if (isFocusOwner()) {
+                g2.setColor(ACCENT);
+                g2.setStroke(new BasicStroke(2.5f));
+                g2.draw(new RoundRectangle2D.Double(1, 1, w - 2, h - 2, ARC + 2, ARC + 2));
+            }
+            g2.dispose();
+            setForeground(text);
+            super.paintComponent(g);
+        }
     }
 }
