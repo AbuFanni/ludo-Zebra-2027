@@ -28,17 +28,20 @@ public final class RollResult {
         return value;
     }
 
-    /** @return true אם זו הטלת 6 שלישית ברצף, שבוטלה והתור עבר (FR-19) */
+    /** @return true if this was a third 6 in a row: it is cancelled and the turn passes (FR-18) */
     public boolean isCancelledThirdSix() {
         return cancelledThirdSix;
     }
 
-    /** @return true אם יש לשחקן לפחות מהלך חוקי אחד */
+    /**
+     * @return true if the player has at least one legal move. If false and there is no extra roll,
+     *         the turn has already passed (FR-19).
+     */
     public boolean hasMoves() {
         return hasMoves;
     }
 
-    /** @return true אם אין מהלך, אבל יצא 6 ולכן השחקן מטיל שוב */
+    /** @return true if there is no legal move but a 6 was rolled, so the player rolls again (FR-17) */
     public boolean isRollAgain() {
         return rollAgain;
     }

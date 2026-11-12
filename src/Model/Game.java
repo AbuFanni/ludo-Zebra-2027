@@ -169,22 +169,26 @@ public class Game {
     // ---------------------------------------------------------------- תור
 
     /**
-     * מטיל את הקובייה של השחקן הנוכחי (FR-15). אם אין מהלך חוקי, התור עובר (או שהשחקן מטיל שוב
-     * אם יצא 6). 6 שלישי ברצף מבוטל והתור עובר (FR-19).
+     * Rolls the step die for the current player (FR-15). If there is no legal move and no extra
+     * roll, the turn passes (FR-19); a 6 with no legal move rolls again (FR-17). A third 6 in a row
+     * is cancelled and the turn passes (FR-18).
      *
-     * @return מה יצא ומה קורה עכשיו
-     * @throws IllegalStateException אם עכשיו לא שלב ההטלה
+     * @return what was rolled and what happens now
+     * @throws IllegalStateException if it is not the roll phase
      */
     public RollResult roll() {
         if (phase != GamePhase.ROLL) {
             throw new IllegalStateException("Not the roll phase: " + phase);
         }
         Player player = getCurrentPlayer();
+        // FR-15: throw the step die once and keep the value for the screen
         int value = die.roll();
         lastRoll = value;
+        // FR-18: count the 6s this player rolled in a row
         sixesInRow = (value == 6) ? sixesInRow + 1 : 0;
 
         RollResult result;
+        // FR-18: a third 6 in a row is cancelled and the turn passes
         if (value == 6 && sixesInRow == 3) {
             legalMoves = Collections.emptyList();
             result = new RollResult(player, value, true, false, false);
@@ -195,13 +199,16 @@ public class Game {
 
         legalMoves = computeLegalMoves(player, value);
         if (!legalMoves.isEmpty()) {
+            // at least one legal move: wait for the player to pick a piece
             phase = GamePhase.MOVE;
             result = new RollResult(player, value, false, true, false);
             fireRolled(result);
         } else if (value == 6) {
+            // FR-17: a 6 with no legal move, so the same player rolls again
             result = new RollResult(player, value, false, false, true);
             fireRolled(result);
         } else {
+            // FR-19: no legal move and no extra roll, so the turn passes
             result = new RollResult(player, value, false, false, false);
             fireRolled(result);
             advanceTurn();
@@ -279,6 +286,8 @@ public class Game {
         }
 
         boolean gameOver = checkGameOver();
+        // FR-17: a 6 gives another roll, unless the game ended or this player has just finished.
+        // Otherwise the turn passes (FR-19).
         boolean extraTurn = !gameOver && lastRoll == 6 && !player.isDone();
         MoveResult result = new MoveResult(move, captured, reachedFinish, playerFinished, extraTurn, gameOver);
         for (GameListener l : listeners) {
@@ -371,6 +380,10 @@ public class Game {
         return false;
     }
 
+    /**
+     * Passes the turn to the next player in entry order (FR-07, FR-19). Players who finished are
+     * skipped, and the new player's 6s are counted from zero (FR-18).
+     */
     private void advanceTurn() {
         sixesInRow = 0;
         legalMoves = Collections.emptyList();

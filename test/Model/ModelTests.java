@@ -31,6 +31,7 @@ public final class ModelTests {
         run("six gives extra roll", ModelTests::sixGivesExtraRoll);
         run("third six cancelled", ModelTests::thirdSixCancelled);
         run("six without move still rolls again", ModelTests::sixWithoutMoveRollsAgain);
+        DieAndTurnTests.runAll();
         run("capture sends pawn to base", ModelTests::captureSendsToBase);
         run("no capture on safe square", ModelTests::noCaptureOnSafe);
         run("double block stops opponent", ModelTests::doubleBlockStops);
@@ -55,11 +56,11 @@ public final class ModelTests {
 
     // ------------------------------------------------------------- framework
 
-    private interface TestBody {
+    interface TestBody {
         void run() throws Exception;
     }
 
-    private static void run(String name, TestBody body) {
+    static void run(String name, TestBody body) {
         try {
             body.run();
             passed++;
@@ -70,13 +71,13 @@ public final class ModelTests {
         }
     }
 
-    private static void check(boolean condition, String message) {
+    static void check(boolean condition, String message) {
         if (!condition) {
             throw new AssertionError(message);
         }
     }
 
-    private static void checkEq(Object expected, Object actual, String what) {
+    static void checkEq(Object expected, Object actual, String what) {
         if (expected == null ? actual != null : !expected.equals(actual)) {
             throw new AssertionError(what + ": expected <" + expected + "> but was <" + actual + ">");
         }
