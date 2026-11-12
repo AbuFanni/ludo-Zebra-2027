@@ -1,10 +1,39 @@
 ---
-title: Ludo Zebra - Class Diagram (Iteration 1)
+title: Ludo Zebra - Class Diagram (Iteration 1, with the classes planned for Iterations 2-3)
 ---
+%% Implemented classes: every field and method, generated from the code after PRs #6-#9, #11, #12.
+%% Constructors are not shown. <<JPanel>> etc. = the Swing class it extends. $ = static, * = abstract.
+%% Classes marked <<planned>> come from the SRS (Iterations 2-3) and SDP 6.2; the team still has to confirm them.
 classDiagram
-direction LR
+direction TB
 
 namespace Controller {
+  class GameController {
+    -MainFrame frame
+    -GameScreenPanel view
+    -HistoryRepository history
+    -MainController main
+    -Random random
+    -Timer clock
+    -Game game
+    ~bind()
+    +isRunning() boolean
+    +start(GameSettings settings)
+    +stop()
+    -onRoll()
+    -onPawnClicked(Pawn pawn)
+    -reasonCannotMove(Pawn pawn) String
+    -updateClock()
+    +onRolled(RollResult r)
+    +onMoved(MoveResult r)
+    +onTurnChanged(Player current)
+    +onGameOver(List~Player~ ranking)
+  }
+  class HistoryController {
+    -HistoryPanel view
+    -HistoryRepository history
+    +refresh()
+  }
   class Main {
     +main(String[] args)$
     ~appDirectory() File$
@@ -20,41 +49,163 @@ namespace Controller {
     +showHistory()
     +startGame(GameSettings settings)
     +requestLeaveGame()
+    -confirmLeaveGame() boolean
     +requestQuit()
+    -quit()
   }
   class SetupController {
     -GameSetupPanel view
     -MainController main
     ~bind()
+    -onInputChanged()
     -onStart()
-  }
-  class GameController {
-    -MainFrame frame
-    -GameScreenPanel view
-    -HistoryRepository history
-    -Game game
-    -Timer clock
-    +start(GameSettings settings)
-    +stop()
-    +isRunning() boolean
-    -onRoll()
-    -onPawnClicked(Pawn pawn)
-    -reasonCannotMove(Pawn pawn) String
-    +onRolled(RollResult r)
-    +onMoved(MoveResult r)
-    +onTurnChanged(Player current)
-    +onGameOver(List~Player~ ranking)
-  }
-  class HistoryController {
-    -HistoryPanel view
-    -HistoryRepository history
-    +refresh()
   }
 }
 
 namespace View {
+  class BoardPanel {
+    <<JPanel>>
+    -Game game
+    -PawnClickListener listener
+    -Pawn hovered
+    -Map~Pawn,Rectangle~ pawnBounds
+    -int cell
+    -int originX
+    -int originY
+    +setGame(Game game)
+    +setPawnClickListener(PawnClickListener listener)
+    -pawnAt(Point point, boolean movableOnly) Pawn
+    #paintComponent(Graphics g0)
+    -cellRect(Position p) Rectangle
+    -paintBase(Graphics2D g, Board board, PlayerColor color)
+    -baseSlotCenter(Board board, PlayerColor color, int slot) Point
+    -paintCenter(Graphics2D g, Board board)
+    -fillTriangle(Graphics2D g, Color color, int x1, int y1, int x2, int y2, int x3, int y3)$
+    -paintSquare(Graphics2D g, Board board, Square s)
+    -drawStar(Graphics2D g, Rectangle r)
+    -drawArrow(Graphics2D g, Board board, Square s, Rectangle r)
+    -drawCenteredText(Graphics2D g, String text, Rectangle r, Color color, int style, double scale)$
+    -paintHoverTarget(Graphics2D g, Board board)
+    -targetRect(Board board, Square target) Rectangle
+    -paintPawns(Graphics2D g, Board board)
+    -isBlock(List~Pawn~ pawns) boolean$
+    -centered(Rectangle r, int size, int dx, int dy) Rectangle$
+    -drawPawn(Graphics2D g, Pawn pawn, Rectangle r, boolean movable)
+    ~paintPawnShape(Graphics2D g, Color color, Rectangle r)$
+  }
+  class ColorDot {
+    <<Icon>>
+    -Color color
+    +paintIcon(Component c, Graphics g, int x, int y)
+    +getIconWidth() int
+    +getIconHeight() int
+  }
+  class ColorRenderer {
+    <<DefaultListCellRenderer>>
+    +getListCellRendererComponent(JList~?~ list, Object value, int index, boolean isSelected, boolean cellHasFocus) Component
+  }
+  class Dialogs {
+    -ImageIcon logoIcon$
+    +installHebrewDefaults()$
+    -logo() ImageIcon$
+    +confirm(Component parent, String title, String message, String yes, String no) boolean$
+    +info(Component parent, String title, String message)$
+    +error(Component parent, String title, String message)$
+    -options(JOptionPane pane, JButton... buttons)$
+    -show(JOptionPane pane, Component parent, String title)$
+    -paintWhite(Container c, Color bg)$
+  }
+  class GameScreenPanel {
+    <<JPanel>>
+    -BoardPanel boardPanel
+    -JLabel levelLabel
+    -JLabel clockLabel
+    -JLabel turnLabel
+    -JLabel diceLabel
+    -JLabel hintLabel
+    -JButton rollButton
+    -JButton exitButton
+    -JPanel playersPanel
+    -JTextArea log
+    -addRow(JPanel parent, Container c)$
+    +showGame(Game game)
+    +showTurn(Player player)
+    +showDice(int value)
+    +updatePlayers(Game game)
+    +appendLog(String line)
+    +setClock(String text)
+    +setHint(String text)
+    +setRollEnabled(boolean enabled)
+    +getBoardPanel() BoardPanel
+    +getRollButton() JButton
+    +getExitButton() JButton
+  }
+  class GameSetupPanel {
+    <<JPanel>>
+    -PlayerColor[] DEFAULT_COLORS$
+    -JComboBox~Integer~ playerCountBox
+    -Map~Difficulty,JRadioButton~ difficultyButtons
+    -List~JTextField~ nameFields
+    -List~JComboBox~PlayerColor~~ colorBoxes
+    -List~JLabel~ nameErrors
+    -List~JLabel~ colorErrors
+    -List~List~Component~~ rows
+    -JLabel generalError
+    -JButton startButton
+    -JButton backButton
+    -Border normalBorder
+    -Border errorBorder
+    -boardLabel(Difficulty d) String$
+    -stack(Component field, JLabel error) JPanel$
+    -errorLabel() JLabel$
+    +reset()
+    -updateVisibleRows()
+    +getPlayerCount() int
+    +getDifficulty() Difficulty
+    +getNames() List~String~
+    +getColors() List~PlayerColor~
+    +clearErrors()
+    +hasErrors() boolean
+    +onInputChanged(Runnable action)
+    +showErrors(SetupValidationResult result)
+    +showErrors(SetupValidationResult result, boolean moveFocus)
+    +getStartButton() JButton
+    +getBackButton() JButton
+  }
+  class HistoryPanel {
+    <<JPanel>>
+    -String[] COLUMNS$
+    -DefaultTableModel model
+    -JTable table
+    -JLabel status
+    -JButton backButton
+    +showRecords(List~GameRecord~ records, String fileName)
+    +showError(String message)
+    +getBackButton() JButton
+  }
+  class Images {
+    -Map~String,Image~ CACHE$
+    +get(String name) Image$
+    +dice(int value) Image$
+    +star() Image$
+    +logo() Image$
+    +icon(Image img, int w, int h) ImageIcon$
+  }
   class MainFrame {
+    <<JFrame>>
+    -long serialVersionUID$
+    +String MENU$
+    +String SETUP$
+    +String GAME$
+    +String HISTORY$
+    +String QUESTIONS$
     -CardLayout cards
+    -JPanel root
+    -MainMenuPanel menuPanel
+    -GameSetupPanel setupPanel
+    -GameScreenPanel gamePanel
+    -HistoryPanel historyPanel
+    -PlaceholderPanel questionsPanel
     -String currentCard
     +showCard(String name)
     +getCurrentCard() String
@@ -62,99 +213,327 @@ namespace View {
     +getSetupPanel() GameSetupPanel
     +getGamePanel() GameScreenPanel
     +getHistoryPanel() HistoryPanel
+    +getQuestionsPanel() PlaceholderPanel
   }
   class MainMenuPanel {
+    <<JPanel>>
+    -long serialVersionUID$
     -JButton newGameButton
     -JButton historyButton
     -JButton questionsButton
     -JButton exitButton
-  }
-  class GameSetupPanel {
-    -JComboBox playerCountBox
-    -List~JTextField~ nameFields
-    -List~JComboBox~ colorBoxes
-    +reset()
-    +getPlayerCount() int
-    +getDifficulty() Difficulty
-    +getNames() List~String~
-    +getColors() List~PlayerColor~
-    +showErrors(SetupValidationResult r)
-    +clearErrors()
-  }
-  class GameScreenPanel {
-    -BoardPanel boardPanel
-    -JTextArea log
-    +showGame(Game game)
-    +showTurn(Player player)
-    +showDice(int value)
-    +updatePlayers(Game game)
-    +appendLog(String line)
-    +setClock(String text)
-    +setRollEnabled(boolean enabled)
-  }
-  class BoardPanel {
-    -Game game
-    -Pawn hovered
-    -Map~Pawn,Rectangle~ pawnBounds
-    +setGame(Game game)
-    +setPawnClickListener(PawnClickListener l)
-    #paintComponent(Graphics g)
-    -paintSquare(Graphics2D g, Board b, Square s)
-    -paintPawns(Graphics2D g, Board b)
-    -paintHoverTarget(Graphics2D g, Board b)
+    -stack(JPanel column, Component c, int gapAfter)$
+    +getNewGameButton() JButton
+    +getHistoryButton() JButton
+    +getQuestionsButton() JButton
+    +getExitButton() JButton
   }
   class PawnClickListener {
     <<interface>>
-    +pawnClicked(Pawn pawn)
-  }
-  class HistoryPanel {
-    -DefaultTableModel model
-    +showRecords(List~GameRecord~ records, String fileName)
-    +showError(String message)
+    +pawnClicked(Pawn pawn)*
   }
   class PlaceholderPanel {
+    <<JPanel>>
+    -long serialVersionUID$
     -JButton backButton
+    +getBackButton() JButton
   }
-  class Dialogs {
-    +installHebrewDefaults()$
-    +confirm(Component p, String title, String msg, String yes, String no) boolean$
-    +info(Component p, String title, String msg)$
+  class StripeBand {
+    <<JComponent>>
+    -long serialVersionUID$
+    #paintComponent(Graphics g)
+  }
+  class StripeHero {
+    <<JPanel>>
+    -long serialVersionUID$
+    -BufferedImage cache
+    #paintComponent(Graphics g)
+    -render(int w, int h) BufferedImage$
+  }
+  class Style {
+    <<enumeration>>
+    PRIMARY
+    SECONDARY
+    QUIET
+  }
+  class SwatchIcon {
+    <<Icon>>
+    -Color color
+    +paintIcon(Component c, Graphics g, int x, int y)
+    +getIconWidth() int
+    +getIconHeight() int
   }
   class UiTheme {
     +Color INK$
+    +Color PAPER$
+    +Color BACKGROUND$
+    +Color SURFACE$
+    +Color PRIMARY$
     +Color ACCENT$
+    +Color TEXT$
+    +Color MUTED$
+    +Color ERROR$
+    +Color LINE$
+    +Color BOARD_BG$
+    +Color SURPRISE$
+    -List~String~ INSTALLED$
+    -String FONT_FAMILY$
+    +Font DISPLAY$
+    +Font TITLE$
+    +Font HEADING$
+    +Font SUBTITLE$
+    +Font BODY$
+    +Font SMALL$
+    +Font BUTTON$
+    -pickFont() String$
+    -displayFont(int size) Font$
+    -semiboldFont(int size) Font$
     +toAwt(PlayerColor c) Color$
     +light(PlayerColor c) Color$
-    +question(QuestionLevel l) Color$
+    +question(QuestionLevel level) Color$
+    +mix(Color a, Color b, double ratio) Color$
+    +label(String text, Font font, Color color) JLabel$
     +primaryButton(String text) JButton$
     +secondaryButton(String text) JButton$
     +quietButton(String text) JButton$
   }
   class ZebraArt {
+    +smooth(Graphics2D g)$
     +paintStripes(Graphics2D g, double w, double h, double spacing, double angle, long seed, Color ink)$
+    -stripes(double half, double spacing, long seed) List~Shape~$
     +pawn(double x, double y, double h) Shape$
     +paintLogo(Graphics2D g, double x, double y, double size)$
+    +logoImage(int size) BufferedImage$
     +windowIcons() List~Image~$
   }
-  class Images {
-    +dice(int value) Image$
-    +star() Image$
-    +logo() Image$
+  class ZebraButton {
+    <<JButton>>
+    -long serialVersionUID$
+    -int ARC$
+    -Style style
+    #paintComponent(Graphics g)
   }
 }
 
 namespace Model {
+  class ArrowSquare {
+    +getKind() SquareKind
+    +isSafe() boolean
+  }
+  class Board {
+    +int BASE_SIZE$
+    -Difficulty difficulty
+    -int size
+    -Map~Position,Square~ squares
+    -Map~PlayerColor,List~Square~~ paths
+    -Map~PlayerColor,Position~ baseOrigins
+    -List~Square~ sharedTrack
+    +getDifficulty() Difficulty
+    +getSize() int
+    +getSquare(Position p) Square
+    +getSquares() Collection~Square~
+    +getSharedTrack() List~Square~
+    +getPath(PlayerColor color) List~Square~
+    +getFinishIndex() int
+    +getBaseOrigin(PlayerColor color) Position
+    +getRingLength(int ringIndex) int
+    +count(SquareKind kind) int
+  }
+  class BoardBuilder {
+    +int INNER_TRACK_LENGTH$
+    +int HOME_PATH_LENGTH$
+    +build(Difficulty difficulty, Random random) Board$
+    -arrowRow(int k, int rings) int$
+    ~ring(int n, int k) List~Position~$
+    ~innerGreenTrack() List~Position~$
+    -baseOrigin(int n, int o, int quarterTurns) Position$
+  }
+  class Die {
+    <<interface>>
+    +roll() int*
+  }
   class Difficulty {
     <<enumeration>>
     EASY
     MEDIUM
     HARD
-    +getGridSize() int
+    +int INNER_SIZE$
+    -String hebrewName
+    -String csvName
+    -int outerRings
+    -int safeSquares
+    -int questionsPerLevel
+    -int surpriseSquares
+    +getHebrewName() String
+    +getCsvName() String
     +getOuterRings() int
+    +getGridSize() int
     +getSafeSquares() int
     +getQuestionsPerLevel() int
     +getSurpriseSquares() int
-    +getCsvName() String
+    +fromCsvName(String csvName) Difficulty$
+    +toString() String
+  }
+  class FinishSquare {
+    +getKind() SquareKind
+    +isSafe() boolean
+    +isPrivate() boolean
+  }
+  class Game {
+    -Board board
+    -List~Player~ players
+    -Die die
+    -LongSupplier clock
+    -List~GameListener~ listeners
+    -List~Player~ ranking
+    -int current
+    -GamePhase phase
+    -int lastRoll
+    -int sixesInRow
+    -List~Move~ legalMoves
+    -long startMillis
+    -long endMillis
+    +addListener(GameListener l)
+    +removeListener(GameListener l)
+    +getBoard() Board
+    +getPlayers() List~Player~
+    +getCurrentPlayer() Player
+    +getPhase() GamePhase
+    +getLastRoll() int
+    +getLegalMoves() List~Move~
+    +getRanking() List~Player~
+    +isOver() boolean
+    +getElapsedMillis() long
+    +getStartMillis() long
+    +squareOf(Pawn pawn) Square
+    +isFinished(Pawn pawn) boolean
+    +pawnsAt(Square square) List~Pawn~
+    +isBlockedFor(Square square, Player mover) boolean
+    +roll() RollResult
+    +legalMoveFor(Pawn pawn) Move
+    +move(Move move) MoveResult
+    ~computeLegalMoves(Player player, int value) List~Move~
+    ~captureAt(Pawn mover) List~Pawn~
+    +canLeaveBase(Player player) boolean
+    +hasExitAndBoardChoice() boolean
+    -allFinished(Player player) boolean
+    -checkGameOver() boolean
+    -advanceTurn()
+    -fireRolled(RollResult result)
+  }
+  class GameListener {
+    <<interface>>
+    +onRolled(RollResult result)
+    +onMoved(MoveResult result)
+    +onTurnChanged(Player current)
+    +onGameOver(List~Player~ ranking)
+  }
+  class GamePhase {
+    <<enumeration>>
+    ROLL
+    MOVE
+    OVER
+  }
+  class GameRecord {
+    -int gameId
+    -String difficulty
+    -String timestamp
+    -List~String~ places
+    -String duration
+    +getGameId() int
+    +getDifficulty() String
+    +getTimestamp() String
+    +getPlaces() List~String~
+    +getPlace(int place) String
+    +getDuration() String
+  }
+  class GameSettings {
+    -Difficulty difficulty
+    -List~String~ names
+    -List~PlayerColor~ colors
+    +getDifficulty() Difficulty
+    +getPlayerCount() int
+    +getNames() List~String~
+    +getColors() List~PlayerColor~
+    +createPlayers() List~Player~
+  }
+  class GameSetupValidator {
+    +int MAX_NAME_LENGTH$
+    +validate(int playerCount, Difficulty difficulty, List~String~ names, List~PlayerColor~ colors) SetupValidationResult$
+    ~nameLength(String name) int$
+  }
+  class HistoryRepository {
+    +String HEADER$
+    +String DEFAULT_FILE$
+    -String NEWLINE$
+    -File file
+    +getFile() File
+    +loadAll() List~GameRecord~
+    +nextGameId() int
+    +save(Game game) GameRecord
+    +append(GameRecord r)
+    +formatTimestamp(long millis) String$
+    +formatDuration(long millis) String$
+  }
+  class HomePathSquare {
+    +getKind() SquareKind
+    +isSafe() boolean
+    +isPrivate() boolean
+  }
+  class Move {
+    -Pawn pawn
+    -int from
+    -int to
+    -boolean stoppedByBlock
+    +getPawn() Pawn
+    +getFrom() int
+    +getTo() int
+    +isStoppedByBlock() boolean
+    +toString() String
+  }
+  class MoveResult {
+    -Move move
+    -List~Pawn~ captured
+    -boolean reachedFinish
+    -boolean playerFinished
+    -boolean extraTurn
+    -boolean gameOver
+    +getMove() Move
+    +getCaptured() List~Pawn~
+    +isReachedFinish() boolean
+    +isPlayerFinished() boolean
+    +isExtraTurn() boolean
+    +isGameOver() boolean
+  }
+  class Pawn {
+    +int IN_BASE$
+    -Player owner
+    -int number
+    -int pathIndex
+    +getOwner() Player
+    +getColor() PlayerColor
+    +getNumber() int
+    +getPathIndex() int
+    +isInBase() boolean
+    ~setPathIndex(int pathIndex)
+    ~sendToBase()
+    +toString() String
+  }
+  class Player {
+    +int PAWNS$
+    -String name
+    -PlayerColor color
+    -int turnOrder
+    -List~Pawn~ pawns
+    -int place
+    +getName() String
+    +getColor() PlayerColor
+    +getTurnOrder() int
+    +getPawns() List~Pawn~
+    +getPlace() int
+    ~setPlace(int place)
+    +isDone() boolean
+    +toString() String
   }
   class PlayerColor {
     <<enumeration>>
@@ -162,21 +541,87 @@ namespace Model {
     YELLOW
     BLUE
     RED
+    -String hebrewName
+    -int quarterTurns
+    +getHebrewName() String
     +getQuarterTurns() int
+    +toString() String
   }
   class Position {
     -int row
     -int col
-    +rotate(int size, int quarterTurns) Position
+    +getRow() int
+    +getCol() int
     +plus(int dRow, int dCol) Position
+    +rotate(int size, int quarterTurns) Position
+    +equals(Object o) boolean
+    +hashCode() int
+    +toString() String
+  }
+  class QuestionLevel {
+    <<enumeration>>
+    EASY
+    MEDIUM
+    HARD
+    -String hebrewName
+    -int steps
+    +getHebrewName() String
+    +getSteps() int
+  }
+  class QuestionSquare {
+    -QuestionLevel level
+    +getLevel() QuestionLevel
+    +getKind() SquareKind
+    +isSafe() boolean
+  }
+  class RegularSquare {
+    +getKind() SquareKind
+    +isSafe() boolean
+  }
+  class RollResult {
+    -Player player
+    -int value
+    -boolean cancelledThirdSix
+    -boolean hasMoves
+    -boolean rollAgain
+    +getPlayer() Player
+    +getValue() int
+    +isCancelledThirdSix() boolean
+    +hasMoves() boolean
+    +isRollAgain() boolean
+  }
+  class SafeSquare {
+    +getKind() SquareKind
+    +isSafe() boolean
+  }
+  class SetupValidationResult {
+    -Map~Integer,String~ nameErrors
+    -Map~Integer,String~ colorErrors
+    -String generalError
+    -GameSettings settings
+    ~addNameError(int row, String message)
+    ~addColorError(int row, String message)
+    ~setGeneralError(String message)
+    ~setSettings(GameSettings settings)
+    +isValid() boolean
+    +getSettings() GameSettings
+    +getNameErrors() Map~Integer,String~
+    +getColorErrors() Map~Integer,String~
+    +getGeneralError() String
   }
   class Square {
     <<abstract>>
     -Position position
     -PlayerColor owner
+    +getPosition() Position
+    +getOwner() PlayerColor
     +getKind() SquareKind*
     +isSafe() boolean*
     +isPrivate() boolean
+    +toString() String
+  }
+  class SquareFactory {
+    +create(SquareKind kind, Position position, PlayerColor owner, QuestionLevel level) Square$
   }
   class SquareKind {
     <<enumeration>>
@@ -189,160 +634,157 @@ namespace Model {
     QUESTION
     SURPRISE
   }
-  class RegularSquare
-  class SafeSquare
-  class StartSquare
-  class ArrowSquare
-  class HomePathSquare
-  class FinishSquare
-  class QuestionSquare {
-    -QuestionLevel level
-  }
-  class SurpriseSquare
-  class QuestionLevel {
-    <<enumeration>>
-    EASY
-    MEDIUM
-    HARD
-    +getSteps() int
-  }
-  class SquareFactory {
-    +create(SquareKind k, Position p, PlayerColor owner, QuestionLevel l) Square$
-  }
-  class BoardBuilder {
-    +build(Difficulty d, Random r) Board$
-    ~ring(int n, int k) List~Position~$
-    ~innerGreenTrack() List~Position~$
-  }
-  class Board {
-    -Map~Position,Square~ squares
-    -Map~PlayerColor,List~Square~~ paths
-    +getSquare(Position p) Square
-    +getPath(PlayerColor c) List~Square~
-    +getFinishIndex() int
-    +getBaseOrigin(PlayerColor c) Position
-    +getSharedTrack() List~Square~
-    +count(SquareKind k) int
-  }
-  class Game {
-    -List~Player~ players
-    -int current
-    -GamePhase phase
-    -int lastRoll
-    -int sixesInRow
-    -List~Move~ legalMoves
-    -List~Player~ ranking
-    +roll() RollResult
-    +move(Move m) MoveResult
-    +legalMoveFor(Pawn p) Move
-    +isBlockedFor(Square s, Player mover) boolean
-    +squareOf(Pawn p) Square
-    +pawnsAt(Square s) List~Pawn~
-    +getRanking() List~Player~
-    +addListener(GameListener l)
-    ~computeLegalMoves(Player p, int value) List~Move~
-  }
-  class GameListener {
-    <<interface>>
-    +onRolled(RollResult r)
-    +onMoved(MoveResult r)
-    +onTurnChanged(Player current)
-    +onGameOver(List~Player~ ranking)
-  }
-  class GamePhase {
-    <<enumeration>>
-    ROLL
-    MOVE
-    OVER
-  }
-  class Die {
-    <<interface>>
-    +roll() int
+  class StartSquare {
+    +getKind() SquareKind
+    +isSafe() boolean
   }
   class StepDie {
     -Random random
     +roll() int
   }
-  class Player {
-    -String name
-    -PlayerColor color
-    -int turnOrder
-    -int place
-    +getPawns() List~Pawn~
-    +isDone() boolean
-  }
-  class Pawn {
-    -int number
-    -int pathIndex
-    +isInBase() boolean
-    ~setPathIndex(int i)
-    ~sendToBase()
-  }
-  class Move {
-    -int from
-    -int to
-    -boolean stoppedByBlock
-  }
-  class RollResult {
-    -int value
-    -boolean cancelledThirdSix
-    -boolean hasMoves
-    -boolean rollAgain
-  }
-  class MoveResult {
-    -List~Pawn~ captured
-    -boolean reachedFinish
-    -boolean playerFinished
-    -boolean extraTurn
-    -boolean gameOver
-  }
-  class GameSettings {
-    -Difficulty difficulty
-    -List~String~ names
-    -List~PlayerColor~ colors
-    +createPlayers() List~Player~
-  }
-  class GameSetupValidator {
-    +validate(int count, Difficulty d, List~String~ names, List~PlayerColor~ colors) SetupValidationResult$
-  }
-  class SetupValidationResult {
-    -Map~Integer,String~ nameErrors
-    -Map~Integer,String~ colorErrors
-    -String generalError
-    +isValid() boolean
-    +getSettings() GameSettings
-  }
-  class HistoryRepository {
-    -File file
-    +loadAll() List~GameRecord~
-    +save(Game g) GameRecord
-    +append(GameRecord r)
-    +nextGameId() int
-  }
-  class GameRecord {
-    -int gameId
-    -String difficulty
-    -String timestamp
-    -List~String~ places
-    -String duration
+  class SurpriseSquare {
+    +getKind() SquareKind
+    +isSafe() boolean
   }
 }
 
+namespace Planned_Iteration2_3 {
+  class Question {
+    <<planned>>
+    -String text
+    -List~String~ answers
+    -int correctIndex
+    -QuestionLevel level
+    +isCorrect(int answer) boolean
+    +getCorrectAnswer() String
+  }
+  class QuestionBank {
+    <<planned>>
+    -QuestionBank instance$
+    -Map~QuestionLevel,List~Question~~ questions
+    -Set~Question~ askedThisGame
+    +getInstance() QuestionBank$
+    +load(File encryptedFile)
+    +nextQuestion(QuestionLevel level) Question
+    +hasEnoughFor(Difficulty d) boolean
+    +add(Question q)
+    +update(Question q)
+    +remove(Question q)
+    +save()
+  }
+  class BoostDie {
+    <<planned>>
+    -Random random
+    +roll() int
+  }
+  class UltraBoostDie {
+    <<planned>>
+    -Random random
+    +roll() int
+  }
+  class SurpriseEvent {
+    <<interface>>
+    +apply(Game game, Pawn pawn)*
+    +getMessage() String*
+  }
+  class SurpriseFactory {
+    <<planned>>
+    -Random random
+    +createRandom() SurpriseEvent
+  }
+  class JumpToFinishEvent {
+    <<planned>>
+    +apply(Game game, Pawn pawn)
+  }
+  class MoveOpponentEvent {
+    <<planned>>
+    +apply(Game game, Pawn pawn)
+  }
+  class BackToCastleEvent {
+    <<planned>>
+    +apply(Game game, Pawn pawn)
+  }
+  class BackThreeStepsEvent {
+    <<planned>>
+    +apply(Game game, Pawn pawn)
+  }
+  class LoseNextTurnEvent {
+    <<planned>>
+    +apply(Game game, Pawn pawn)
+  }
+  class UltraBoostRollEvent {
+    <<planned>>
+    +apply(Game game, Pawn pawn)
+  }
+  class AdminAccount {
+    <<planned>>
+    -String username
+    -String salt
+    -String passwordHash
+    -int failedAttempts
+    -long lockedUntil
+    +checkPassword(String password) boolean
+    +changePassword(String oldPassword, String newPassword)
+    +isLocked() boolean
+  }
+  class QuestionController {
+    <<planned>>
+    -QuestionDialog view
+    -QuestionBank bank
+    +askQuestion(Pawn pawn, QuestionSquare square)
+    -onAnswer(int answer)
+  }
+  class AdminController {
+    <<planned>>
+    -AdminAccount account
+    -AdminLoginPanel loginView
+    -QuestionWizardPanel wizardView
+    +login(String user, String password) boolean
+    +logout()
+    +openWizard()
+  }
+  class QuestionDialog {
+    <<planned>>
+    +ask(Question q) int
+    +showResult(boolean correct, String correctAnswer)
+  }
+  class AdminLoginPanel {
+    <<planned>>
+    +getUser() String
+    +getPassword() char[]
+    +showError(String message)
+  }
+  class QuestionWizardPanel {
+    <<planned>>
+    +showQuestions(List~Question~ questions, QuestionLevel filter)
+    +getEditedQuestion() Question
+  }
+}
+
+%% ---- Controller
 Main ..> MainController : creates
+Main ..> MainFrame : creates
+Main ..> HistoryRepository : creates
 MainController *-- SetupController
 MainController *-- GameController
 MainController *-- HistoryController
 MainController --> MainFrame
+MainController ..> Dialogs
 SetupController --> GameSetupPanel
+SetupController --> MainController
 SetupController ..> GameSetupValidator
 GameController ..|> GameListener
+GameController --> MainFrame
 GameController --> GameScreenPanel
 GameController --> Game
-GameController ..> BoardBuilder
 GameController --> HistoryRepository
+GameController ..> BoardBuilder
+GameController ..> StepDie : creates
+GameController ..> Dialogs
 HistoryController --> HistoryPanel
 HistoryController --> HistoryRepository
 
+%% ---- View
 MainFrame *-- MainMenuPanel
 MainFrame *-- GameSetupPanel
 MainFrame *-- GameScreenPanel
@@ -350,12 +792,29 @@ MainFrame *-- HistoryPanel
 MainFrame *-- PlaceholderPanel
 MainFrame ..> ZebraArt : icon
 MainMenuPanel ..> ZebraArt : draws
+MainMenuPanel *-- StripeHero : inner class
 PlaceholderPanel ..> ZebraArt : draws
+PlaceholderPanel *-- StripeBand : inner class
 Dialogs ..> ZebraArt : icon
 GameScreenPanel *-- BoardPanel
+GameScreenPanel ..> ColorDot : inner class
+GameScreenPanel ..> Images
+GameSetupPanel ..> ColorRenderer : inner class
+GameSetupPanel ..> SwatchIcon : inner class
+GameSetupPanel ..> SetupValidationResult
+GameSetupPanel --> Difficulty
+GameSetupPanel --> PlayerColor
 BoardPanel --> PawnClickListener
 BoardPanel ..> Game : reads
+BoardPanel --> Pawn
+BoardPanel ..> Images
+HistoryPanel ..> GameRecord
+UiTheme ..> ZebraButton : creates
+ZebraButton --> Style
+UiTheme ..> PlayerColor
+UiTheme ..> QuestionLevel
 
+%% ---- Model
 Square <|-- RegularSquare
 Square <|-- SafeSquare
 Square <|-- StartSquare
@@ -366,12 +825,15 @@ Square <|-- QuestionSquare
 Square <|-- SurpriseSquare
 Square --> Position
 Square --> SquareKind
+Square --> PlayerColor : owner
 QuestionSquare --> QuestionLevel
 SquareFactory ..> Square : creates
 BoardBuilder ..> SquareFactory
 BoardBuilder ..> Board : builds
+BoardBuilder ..> Difficulty
 Board "1" *-- "many" Square
 Board --> Difficulty
+Board --> Position
 Game --> Board
 Game "1" o-- "2..4" Player
 Game --> Die
@@ -383,9 +845,39 @@ Game ..> MoveResult
 Die <|.. StepDie
 Player "1" *-- "4" Pawn
 Player --> PlayerColor
+Pawn --> Player : owner
 Move --> Pawn
+MoveResult --> Move
+MoveResult --> Pawn : captured
+RollResult --> Player
 GameSetupValidator ..> SetupValidationResult
+GameSetupValidator ..> GameSettings : creates
 SetupValidationResult --> GameSettings
+GameSettings --> Difficulty
+GameSettings --> PlayerColor
 GameSettings ..> Player : creates
 HistoryRepository ..> GameRecord
 HistoryRepository ..> Game
+
+%% ---- Planned (Iterations 2-3)
+Die <|.. BoostDie
+Die <|.. UltraBoostDie
+QuestionBank "1" o-- "many" Question
+Question --> QuestionLevel
+SurpriseFactory ..> SurpriseEvent : creates
+SurpriseEvent <|.. JumpToFinishEvent
+SurpriseEvent <|.. MoveOpponentEvent
+SurpriseEvent <|.. BackToCastleEvent
+SurpriseEvent <|.. BackThreeStepsEvent
+SurpriseEvent <|.. LoseNextTurnEvent
+SurpriseEvent <|.. UltraBoostRollEvent
+SurpriseEvent ..> Game : changes
+GameController --> QuestionController
+GameController ..> SurpriseFactory
+QuestionController --> QuestionBank
+QuestionController --> QuestionDialog
+MainController *-- AdminController
+AdminController --> AdminAccount
+AdminController --> AdminLoginPanel
+AdminController --> QuestionWizardPanel
+AdminController --> QuestionBank
