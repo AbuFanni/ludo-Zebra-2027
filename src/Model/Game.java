@@ -217,7 +217,10 @@ public class Game {
     }
 
     /**
-     * @return המהלך החוקי של הכלי, או null אם הכלי לא יכול לזוז בתוצאה הנוכחית
+     * Finds the legal move of the piece the player clicked (FR-23). Only pieces with a legal move
+     * are marked on the screen; a click on any other piece gets an explanation instead of a move.
+     *
+     * @return the legal move of this piece, or null if it cannot move with the current roll
      */
     public Move legalMoveFor(Pawn pawn) {
         for (Move m : legalMoves) {
@@ -225,7 +228,8 @@ public class Game {
                 return m;
             }
         }
-        // כמה כלים בטירה: המהלך נשמר לכלי אחד מהם, וכל כלי בטירה מייצג אותו
+        // FR-20: pieces in the castle are all the same, so one exit move is kept for all of them,
+        // and a click on any of them takes a piece out
         if (pawn.isInBase()) {
             for (Move m : legalMoves) {
                 if (m.getPawn().isInBase() && m.getPawn().getOwner() == pawn.getOwner()) {
@@ -237,21 +241,26 @@ public class Game {
     }
 
     /**
-     * מבצע מהלך חוקי (FR-20 עד FR-22): מזיז את הכלי, אוכל כלי יחיד של יריב במשבצת לא מוגנת,
-     * מעדכן סיום ודירוג, ונותן הטלה נוספת אם יצא 6.
+     * Makes a legal move (FR-20 to FR-22): the one piece the player chose moves the whole roll,
+     * a single opponent piece on a square that is not safe is captured, finishing and ranking are
+     * updated, and a 6 gives another roll.
      *
-     * @param move אחד מהמהלכים ב-{@link #getLegalMoves()}
-     * @return מה קרה
+     * @param move one of the moves in {@link #getLegalMoves()}
+     * @return what happened
+     * @throws IllegalStateException if it is not the move phase
+     * @throws IllegalArgumentException if the move is not legal (FR-23)
      */
     public MoveResult move(Move move) {
         if (phase != GamePhase.MOVE) {
             throw new IllegalStateException("Not the move phase: " + phase);
         }
+        // FR-23: only a move from the legal list is made; any other move is refused
         if (!legalMoves.contains(move)) {
             throw new IllegalArgumentException("Illegal move: " + move);
         }
         Player player = getCurrentPlayer();
         Pawn pawn = move.getPawn();
+        // FR-21: only this piece moves, and the target was already worked out in computeLegalMoves
         pawn.setPathIndex(move.getTo());
         legalMoves = Collections.emptyList();
 
@@ -311,8 +320,13 @@ public class Game {
     // ---------------------------------------------------------------- עזר
 
     /**
-     * המהלכים החוקיים לתוצאה. מהלכים מלאים קודמים; רק אם אין אף מהלך מלא, כלי שנתקל ב-Double Block
-     * נעצר במשבצת שלפניו (תשובות המתרגלים על Double Block).
+     * The legal moves for this roll (FR-20, FR-21, FR-23). Each move is one piece going the whole
+     * roll along its own path. Only if no piece can do that, a piece that meets a Double Block may
+     * stop on the square before it (FR-35).
+     * <p>
+     * The path of each color is built by {@link BoardBuilder}: it goes clockwise, and at each arrow
+     * of that color it turns into the next inner track (FR-22). So moving is just going forward on
+     * the path, the same way on every level.
      */
     List<Move> computeLegalMoves(Player player, int value) {
         List<Square> path = board.getPath(player.getColor());
@@ -322,6 +336,8 @@ public class Game {
         boolean baseMoveAdded = false;
 
         for (Pawn pawn : player.getPawns()) {
+            // FR-20: a piece in the castle may leave only on a 6, to its start square (#); an
+            // opponent's Double Block on that square keeps it in (FR-36). One exit move is enough.
             if (pawn.isInBase()) {
                 if (value == 6 && !baseMoveAdded && !isBlockedFor(path.get(0), player)) {
                     full.add(new Move(pawn, Pawn.IN_BASE, 0, false));
@@ -331,12 +347,14 @@ public class Game {
             }
             int from = pawn.getPathIndex();
             if (from == finish) {
-                continue;
+                continue; // already home: it does not move any more
             }
+            // FR-21, FR-22: the piece goes forward the whole roll on its own path
             int to = from + value;
             if (to > finish) {
-                continue; // נכנסים לבית רק בתוצאה מדויקת
+                continue; // FR-24: home only with the exact number
             }
+            // FR-33: the piece may not pass or land on an opponent's Double Block
             int blockedAt = -1;
             for (int i = from + 1; i <= to; i++) {
                 if (isBlockedFor(path.get(i), player)) {
@@ -347,9 +365,12 @@ public class Game {
             if (blockedAt < 0) {
                 full.add(new Move(pawn, from, to, false));
             } else if (blockedAt - 1 > from) {
+                // FR-35: stop on the square before the block, if that still moves the piece
                 partial.add(new Move(pawn, from, blockedAt - 1, true));
             }
         }
+        // FR-35: a piece that can move the whole roll must be moved; stopping early is only
+        // allowed when there is no such piece
         return full.isEmpty() ? partial : full;
     }
 
