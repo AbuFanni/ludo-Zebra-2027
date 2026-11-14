@@ -45,7 +45,8 @@ public class MainController {
             @Override
             public void windowClosing(WindowEvent e) {
                 if (MainFrame.GAME.equals(frame.getCurrentCard()) && gameController.isRunning()) {
-                    if (confirmLeaveGame()) {
+                    // X סוגר את כל התוכנה, ולכן ההודעה אומרת זאת (הערה 1 בסקירה של מוחמד על PR #2)
+                    if (confirmCloseDuringGame()) {
                         gameController.stop();
                         quit();
                     }
@@ -89,6 +90,11 @@ public class MainController {
     private boolean confirmLeaveGame() {
         return Dialogs.confirm(frame, "יציאה מהמשחק",
                 "לצאת מהמשחק? המשחק לא יישמר בהיסטוריה.", "כן, לצאת", "המשך לשחק");
+    }
+
+    private boolean confirmCloseDuringGame() {
+        return Dialogs.confirm(frame, "סגירת התוכנה",
+                "לסגור את Ludo Zebra? המשחק הנוכחי לא יישמר בהיסטוריה.", "סגור", "המשך לשחק");
     }
 
     /** סגירת התוכנה, רק אחרי אישור (FR-02). */
