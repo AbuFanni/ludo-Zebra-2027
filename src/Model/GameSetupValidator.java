@@ -45,7 +45,7 @@ public final class GameSetupValidator {
         List<String> clean = new ArrayList<String>();
         for (int i = 0; i < playerCount; i++) {
             String raw = i < names.size() ? names.get(i) : null;
-            String name = raw == null ? "" : raw.trim();
+            String name = cleanName(raw);
             clean.add(name);
             if (name.isEmpty()) {
                 result.addNameError(i, "יש להזין שם");
@@ -91,5 +91,38 @@ public final class GameSetupValidator {
      */
     static int nameLength(String name) {
         return name.codePointCount(0, name.length());
+    }
+
+    /**
+     * מנקה שם לפני הבדיקה (FR-04). {@code trim()} מסיר רק רווחים רגילים, ולכן שם שכולו רווח קשיח
+     * ({@code \u00A0}) או סימן כיוון ({@code \u200E}, {@code \u200F} – קל להקליד במקלדת עברית) עבר
+     * את הבדיקה ונראה ריק. כאן מוסרים תווים בלתי נראים מכל השם, ורווחים מכל סוג מהקצוות.
+     * (הערה 3 בסקירה של מוחמד על PR #2.)
+     *
+     * @param raw השם כפי שהוקלד, או null
+     * @return השם הנקי; מחרוזת ריקה אם לא נשאר בו שום תו גלוי
+     */
+    static String cleanName(String raw) {
+        if (raw == null) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder(raw.length());
+        raw.codePoints()
+                .filter(cp -> Character.getType(cp) != Character.FORMAT)
+                .forEach(sb::appendCodePoint);
+        int start = 0;
+        int end = sb.length();
+        while (start < end && isBlank(sb.charAt(start))) {
+            start++;
+        }
+        while (end > start && isBlank(sb.charAt(end - 1))) {
+            end--;
+        }
+        return sb.substring(start, end);
+    }
+
+    /** רווח מכל סוג: רגיל, טאב, רווח קשיח ושאר רווחי Unicode. */
+    private static boolean isBlank(char c) {
+        return Character.isWhitespace(c) || Character.isSpaceChar(c);
     }
 }
