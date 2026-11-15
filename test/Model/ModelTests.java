@@ -27,6 +27,7 @@ public final class ModelTests {
         run("special squares only on shared track", ModelTests::specialsOnSharedTrack);
         run("paths rotate per color", ModelTests::pathsRotate);
         run("medium path: outer ring -> arrow -> inner", ModelTests::mediumPathUsesArrows);
+        BoardModelTests.runAll();
         run("enter only with 6", ModelTests::enterOnlyWithSix);
         run("six gives extra roll", ModelTests::sixGivesExtraRoll);
         run("third six cancelled", ModelTests::thirdSixCancelled);
