@@ -40,6 +40,7 @@ public final class ModelTests {
         run("exact roll needed for finish", ModelTests::exactFinish);
         run("game over and ranking", ModelTests::gameOverRanking);
         run("random full games always finish", ModelTests::randomGamesFinish);
+        PlayerModelTests.runAll();
         run("setup validation", ModelTests::setupValidation);
         run("history csv format", ModelTests::historyCsv);
         SetupValidationTests.runAll();
