@@ -5,7 +5,8 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * בודק את מסך הגדרת המשחק (FR-03 עד FR-07).
+ * בודק את מסך הגדרת המשחק (FR-03 עד FR-07). הבדיקה כולה במודל, כך שאפשר לבדוק אותה בלי מסך;
+ * ה-View רק מציג את השגיאות (FR-06).
  * <ul>
  *   <li>2 עד 4 שחקנים ורמת קושי.</li>
  *   <li>שם: 1 עד 15 תווים אחרי הסרת רווחים, בלי פסיק (כדי לא לשבור את קובץ ה-CSV), ושונה משמות
@@ -48,7 +49,7 @@ public final class GameSetupValidator {
             clean.add(name);
             if (name.isEmpty()) {
                 result.addNameError(i, "יש להזין שם");
-            } else if (name.length() > MAX_NAME_LENGTH) {
+            } else if (nameLength(name) > MAX_NAME_LENGTH) {
                 result.addNameError(i, "השם ארוך מדי – עד " + MAX_NAME_LENGTH + " תווים");
             } else if (name.contains(",")) {
                 result.addNameError(i, "אסור להשתמש בפסיק בשם");
@@ -79,5 +80,16 @@ public final class GameSetupValidator {
             result.setSettings(new GameSettings(difficulty, clean, colors.subList(0, playerCount)));
         }
         return result;
+    }
+
+    /**
+     * אורך השם בתווים כפי שהשחקן רואה אותם (FR-04). {@code String.length()} סופר תווים מסוימים
+     * (למשל אימוג'י) כשניים, ולכן שם של 15 תווים כאלה היה נדחה בטעות.
+     *
+     * @param name השם אחרי הסרת רווחים
+     * @return מספר התווים בשם
+     */
+    static int nameLength(String name) {
+        return name.codePointCount(0, name.length());
     }
 }

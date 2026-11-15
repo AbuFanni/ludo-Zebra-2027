@@ -42,6 +42,7 @@ public final class ModelTests {
         run("random full games always finish", ModelTests::randomGamesFinish);
         run("setup validation", ModelTests::setupValidation);
         run("history csv format", ModelTests::historyCsv);
+        SetupValidationTests.runAll();
 
         System.out.println();
         System.out.println(passed + " passed, " + failures.size() + " failed");
@@ -55,11 +56,11 @@ public final class ModelTests {
 
     // ------------------------------------------------------------- framework
 
-    private interface TestBody {
+    interface TestBody {
         void run() throws Exception;
     }
 
-    private static void run(String name, TestBody body) {
+    static void run(String name, TestBody body) {
         try {
             body.run();
             passed++;
@@ -70,13 +71,13 @@ public final class ModelTests {
         }
     }
 
-    private static void check(boolean condition, String message) {
+    static void check(boolean condition, String message) {
         if (!condition) {
             throw new AssertionError(message);
         }
     }
 
-    private static void checkEq(Object expected, Object actual, String what) {
+    static void checkEq(Object expected, Object actual, String what) {
         if (expected == null ? actual != null : !expected.equals(actual)) {
             throw new AssertionError(what + ": expected <" + expected + "> but was <" + actual + ">");
         }

@@ -25,6 +25,8 @@ import javax.swing.JRadioButton;
 import javax.swing.JTextField;
 import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 
 import Model.Difficulty;
 import Model.GameSetupValidator;
@@ -259,10 +261,63 @@ public class GameSetupPanel extends JPanel {
         generalError.setText(" ");
     }
 
+    /** @return true אם מוצגת כרגע הודעת שגיאה כלשהי במסך */
+    public boolean hasErrors() {
+        for (int i = 0; i < nameErrors.size(); i++) {
+            if (!nameErrors.get(i).getText().trim().isEmpty() || !colorErrors.get(i).getText().trim().isEmpty()) {
+                return true;
+            }
+        }
+        return !generalError.getText().trim().isEmpty();
+    }
+
+    /**
+     * רושם פעולה שתרוץ בכל שינוי בשדות: הקלדה בשם, בחירת צבע, מספר שחקנים או רמה.
+     * ה-Controller משתמש בזה כדי לעדכן את השגיאות בזמן אמת אחרי שהוצגו (FR-06).
+     */
+    public void onInputChanged(Runnable action) {
+        DocumentListener typing = new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                action.run();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                action.run();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                action.run();
+            }
+        };
+        for (JTextField f : nameFields) {
+            f.getDocument().addDocumentListener(typing);
+        }
+        for (JComboBox<PlayerColor> b : colorBoxes) {
+            b.addActionListener(e -> action.run());
+        }
+        playerCountBox.addActionListener(e -> action.run());
+        for (JRadioButton rb : difficultyButtons.values()) {
+            rb.addActionListener(e -> action.run());
+        }
+    }
+
     /**
      * מציג כל שגיאה ליד השדה שלה ומעביר את הפוקוס לשדה השגוי הראשון (FR-06).
      */
     public void showErrors(SetupValidationResult result) {
+        showErrors(result, true);
+    }
+
+    /**
+     * מציג כל שגיאה ליד השדה שלה (FR-06).
+     *
+     * @param moveFocus true כדי להעביר את הפוקוס לשדה השגוי הראשון (בלחיצה על "התחל משחק");
+     *                  false בעדכון בזמן הקלדה, כדי לא לקפוץ מהשדה שהשחקן מקליד בו
+     */
+    public void showErrors(SetupValidationResult result, boolean moveFocus) {
         clearErrors();
         Component firstBad = null;
         for (Map.Entry<Integer, String> e : result.getNameErrors().entrySet()) {
@@ -282,7 +337,7 @@ public class GameSetupPanel extends JPanel {
         if (result.getGeneralError() != null) {
             generalError.setText(result.getGeneralError());
         }
-        if (firstBad != null) {
+        if (moveFocus && firstBad != null) {
             firstBad.requestFocusInWindow();
         }
     }
