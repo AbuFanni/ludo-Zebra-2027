@@ -13,8 +13,10 @@ import Model.DieAndTurnTests.ScriptedDie;
 /**
  * Tests for moving a piece (FR-21, FR-22) and for the legal-move check (FR-23).
  * <p>
- * Leaving the castle (FR-20) is covered by {@code CastleExitTests}. Each test name starts with the
- * FR it checks, as in the acceptance tests. The tests run together with the other model tests
+ * Leaving the castle (FR-20) has its own test class, {@code CastleExitTests}, in PR #8 (branch
+ * nimer/castle-exit), which is not merged yet. In this file FR-20 is checked only inside the FR-23
+ * tests: a castle piece gets no move without a 6, and may leave on a 6. Each test name starts with
+ * the FR it checks, as in the acceptance tests. The tests run together with the other model tests
  * ({@link ModelTests}) through build.sh / build.bat.
  *
  * @author Waseem Abu Fanna (Zebra) – Iteration 1, SDP table 2 (FR-20–FR-23)
