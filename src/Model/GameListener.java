@@ -16,6 +16,10 @@ public interface GameListener {
     default void onMoved(MoveResult result) {
     }
 
+    /** שחקן ענה על שאלה והכלי זז לפי התשובה (FR-40). */
+    default void onAnswered(AnswerResult result) {
+    }
+
     /** התור עבר לשחקן אחר. */
     default void onTurnChanged(Player current) {
     }

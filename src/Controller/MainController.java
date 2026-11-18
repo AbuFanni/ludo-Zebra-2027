@@ -5,6 +5,7 @@ import java.awt.event.WindowEvent;
 
 import Model.GameSettings;
 import Model.HistoryRepository;
+import Model.QuestionRepository;
 import View.Dialogs;
 import View.MainFrame;
 
@@ -23,10 +24,10 @@ public class MainController {
     private final GameController gameController;
     private final HistoryController historyController;
 
-    public MainController(MainFrame frame, HistoryRepository history) {
+    public MainController(MainFrame frame, HistoryRepository history, QuestionRepository questions) {
         this.frame = frame;
         this.setupController = new SetupController(frame.getSetupPanel(), this);
-        this.gameController = new GameController(frame, frame.getGamePanel(), history, this);
+        this.gameController = new GameController(frame, frame.getGamePanel(), history, questions, this);
         this.historyController = new HistoryController(frame.getHistoryPanel(), history);
     }
 
@@ -72,10 +73,14 @@ public class MainController {
         frame.showCard(MainFrame.HISTORY);
     }
 
-    /** מתחיל משחק בהגדרות התקינות ועובר למסך המשחק. */
+    /**
+     * מתחיל משחק בהגדרות התקינות ועובר למסך המשחק. אם קובץ השאלות חסר או פגום, נשארים במסך ההגדרה
+     * (FR-43).
+     */
     public void startGame(GameSettings settings) {
-        gameController.start(settings);
-        frame.showCard(MainFrame.GAME);
+        if (gameController.start(settings)) {
+            frame.showCard(MainFrame.GAME);
+        }
     }
 
     /** יציאה מהמשחק לתפריט, רק אחרי אישור (FR-02). */

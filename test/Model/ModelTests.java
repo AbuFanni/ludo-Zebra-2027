@@ -45,6 +45,7 @@ public final class ModelTests {
         run("setup validation", ModelTests::setupValidation);
         run("history csv format", ModelTests::historyCsv);
         SetupValidationTests.runAll();
+        QuestionTests.runAll();
 
         System.out.println();
         System.out.println(passed + " passed, " + failures.size() + " failed");

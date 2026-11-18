@@ -1,11 +1,14 @@
 package Controller;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.URISyntaxException;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 
+import Model.DefaultQuestions;
 import Model.HistoryRepository;
+import Model.QuestionRepository;
 import View.Dialogs;
 import View.MainFrame;
 
@@ -33,8 +36,22 @@ public final class Main {
             Dialogs.installHebrewDefaults();
             MainFrame frame = new MainFrame();
             HistoryRepository history = new HistoryRepository(new File(appDirectory(), HistoryRepository.DEFAULT_FILE));
-            new MainController(frame, history).start();
+            QuestionRepository questions = new QuestionRepository(new File(appDirectory(), QuestionRepository.DEFAULT_FILE));
+            createQuestionsFile(questions);
+            new MainController(frame, history, questions).start();
         });
+    }
+
+    /**
+     * בהפעלה הראשונה יוצר את קובץ השאלות עם המאגר ההתחלתי (FR-74). אם זה נכשל, המשחק עדיין עולה,
+     * ורמה בינונית או קשה יציגו שגיאה כשמנסים להתחיל אותן (FR-43).
+     */
+    private static void createQuestionsFile(QuestionRepository questions) {
+        try {
+            questions.createIfMissing(DefaultQuestions.all());
+        } catch (IOException e) {
+            System.err.println("Cannot create " + questions.getFile() + ": " + e.getMessage());
+        }
     }
 
     /** @return התיקייה של קובץ ה-JAR, כדי שקובץ ההיסטוריה יישמר לידו; אחרת תיקיית העבודה */
