@@ -19,6 +19,7 @@ namespace Controller {
     +showSetup()
     +showHistory()
     +startGame(GameSettings settings)
+    +showGameOver(List~Player~ ranking, String duration, String difficulty, String note)
     +requestLeaveGame()
     +requestQuit()
   }
@@ -106,6 +107,15 @@ namespace View {
   class PawnClickListener {
     <<interface>>
     +pawnClicked(Pawn pawn)
+  }
+  class SurpriseDialog {
+    +show(Component parent, SurpriseEvent e, Pawn p, Map opponents, Actions a) SurpriseResult$
+    +describe(SurpriseResult r) String$
+  }
+  class GameOverPanel {
+    +showResults(List~Player~ ranking, String duration, String difficulty, String note)
+    +getNewGameButton() JButton
+    +getMenuButton() JButton
   }
   class QuestionDialog {
     -Question question
@@ -244,6 +254,13 @@ namespace Model {
     +answer(int choice) AnswerResult
     +getPendingQuestion() Question
     +getQuestionPawn() Pawn
+    +resolveSurprise() SurpriseResult
+    +moveOpponent(Pawn target) SurpriseResult
+    +rollUltraBoost() SurpriseResult
+    +surpriseOpponents() List~Player~
+    +surpriseTargets(Player p) List~Pawn~
+    +getPendingSurprise() SurpriseEvent
+    +getSurprisePawn() Pawn
     +legalMoveFor(Pawn p) Move
     +isBlockedFor(Square s, Player mover) boolean
     +squareOf(Pawn p) Square
@@ -257,6 +274,9 @@ namespace Model {
     +onRolled(RollResult r)
     +onMoved(MoveResult r)
     +onAnswered(AnswerResult r)
+    +onSurprise(SurpriseEvent e, Pawn p)
+    +onSurpriseResolved(SurpriseResult r)
+    +onTurnSkipped(Player p)
     +onTurnChanged(Player current)
     +onGameOver(List~Player~ ranking)
   }
@@ -265,6 +285,7 @@ namespace Model {
     ROLL
     MOVE
     QUESTION
+    SURPRISE
     OVER
   }
   class Die {
@@ -379,6 +400,32 @@ namespace Model {
   class DefaultQuestions {
     +all() List~Question~$
   }
+  class SurpriseEvent {
+    <<enumeration>>
+    JUMP_TO_FINISH
+    MOVE_OPPONENT
+    BACK_TO_BASE
+    BACK_THREE
+    LOSE_NEXT_TURN
+    ULTRA_BOOST
+    +getPercent() int
+  }
+  class SurpriseDeck {
+    -Drawer drawer
+    -Die ultraBoost
+    +draw() SurpriseEvent
+    +rollUltraBoost() int
+    +drawWeighted(Random r) SurpriseEvent$
+  }
+  class SurpriseResult {
+    -SurpriseEvent event
+    -Pawn movedPawn
+    -int from
+    -int to
+    -List~Pawn~ captured
+    +isExtraTurn() boolean
+    +isContinues() boolean
+  }
   class GameRecord {
     -int gameId
     -String difficulty
@@ -462,6 +509,14 @@ QuestionRepository ..> QuestionFileException
 DefaultQuestions ..> QuestionFactory
 Game --> QuestionDeck
 Game ..> AnswerResult
+Game --> SurpriseDeck
+SurpriseDeck ..> SurpriseEvent
+Game ..> SurpriseResult
+SurpriseResult --> SurpriseEvent
+GameController ..> SurpriseDialog
+SurpriseDialog ..> SurpriseResult : reads
+MainFrame *-- GameOverPanel
+MainController ..> GameOverPanel : fills
 GameController --> QuestionRepository
 GameController ..> QuestionDialog
 QuestionDialog ..> Question : reads
