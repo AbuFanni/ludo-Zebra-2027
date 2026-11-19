@@ -107,6 +107,13 @@ namespace View {
     <<interface>>
     +pawnClicked(Pawn pawn)
   }
+  class QuestionDialog {
+    -Question question
+    -AnswerButton[] buttons
+    -int chosen
+    +ask(Component parent, Question q, Player answerer) int$
+    -choose(int index)
+  }
   class HistoryPanel {
     -DefaultTableModel model
     +showRecords(List~GameRecord~ records, String fileName)
@@ -234,6 +241,9 @@ namespace Model {
     -List~Player~ ranking
     +roll() RollResult
     +move(Move m) MoveResult
+    +answer(int choice) AnswerResult
+    +getPendingQuestion() Question
+    +getQuestionPawn() Pawn
     +legalMoveFor(Pawn p) Move
     +isBlockedFor(Square s, Player mover) boolean
     +squareOf(Pawn p) Square
@@ -246,6 +256,7 @@ namespace Model {
     <<interface>>
     +onRolled(RollResult r)
     +onMoved(MoveResult r)
+    +onAnswered(AnswerResult r)
     +onTurnChanged(Player current)
     +onGameOver(List~Player~ ranking)
   }
@@ -253,6 +264,7 @@ namespace Model {
     <<enumeration>>
     ROLL
     MOVE
+    QUESTION
     OVER
   }
   class Die {
@@ -318,6 +330,54 @@ namespace Model {
     +save(Game g) GameRecord
     +append(GameRecord r)
     +nextGameId() int
+  }
+  class Question {
+    -int id
+    -QuestionLevel level
+    -String text
+    -List~String~ answers
+    -int correctIndex
+    +check(int choice) AnswerCheck
+    +getCorrectAnswer() String
+  }
+  class AnswerCheck {
+    -Question question
+    -int chosenIndex
+    -boolean correct
+    +getSteps() int
+    +getSignedSteps() int
+  }
+  class AnswerResult {
+    -AnswerCheck check
+    -Pawn pawn
+    -int from
+    -int to
+    -Limit limit
+    -List~Pawn~ captured
+    -Question nextQuestion
+  }
+  class QuestionFactory {
+    <<abstract>>
+    +forLevel(QuestionLevel l) QuestionFactory$
+    #level() QuestionLevel*
+    +create(int id, String text, List~String~ answers, int correct) Question
+  }
+  class EasyQuestionFactory
+  class MediumQuestionFactory
+  class HardQuestionFactory
+  class QuestionDeck {
+    -Map~QuestionLevel,List~Question~~ remaining
+    +next(QuestionLevel l) Question
+  }
+  class QuestionRepository {
+    -File file
+    +loadAll() List~Question~
+    +saveAll(List~Question~ q)
+    +createIfMissing(List~Question~ q) boolean
+  }
+  class QuestionFileException
+  class DefaultQuestions {
+    +all() List~Question~$
   }
   class GameRecord {
     -int gameId
@@ -389,3 +449,19 @@ SetupValidationResult --> GameSettings
 GameSettings ..> Player : creates
 HistoryRepository ..> GameRecord
 HistoryRepository ..> Game
+QuestionFactory <|-- EasyQuestionFactory
+QuestionFactory <|-- MediumQuestionFactory
+QuestionFactory <|-- HardQuestionFactory
+QuestionFactory ..> Question : creates
+Question --> QuestionLevel
+Question ..> AnswerCheck
+AnswerResult --> AnswerCheck
+QuestionDeck "1" o-- "many" Question
+QuestionRepository ..> QuestionFactory
+QuestionRepository ..> QuestionFileException
+DefaultQuestions ..> QuestionFactory
+Game --> QuestionDeck
+Game ..> AnswerResult
+GameController --> QuestionRepository
+GameController ..> QuestionDialog
+QuestionDialog ..> Question : reads

@@ -25,6 +25,8 @@ import java.util.function.LongSupplier;
  *   <li>אין אכילה על משבצת מוגנת (כוכב, #, הפתעה). נכנסים לבית רק בתוצאה מדויקת.</li>
  *   <li>חובה לזוז כשיש מהלך חוקי. כל הטלה מזיזה כלי אחד.</li>
  *   <li>המשחק נגמר כשכל השחקנים חוץ מאחד סיימו; האחרון מקבל את המקום האחרון.</li>
+ *   <li>כלי שנוחת על משבצת שאלה עוצר את התור עד שבעליו עונה (שלב {@link GamePhase#QUESTION}),
+ *       והתשובה מזיזה אותו קדימה או אחורה (FR-38 עד FR-43).</li>
  * </ul>
  */
 public class Game {
@@ -35,6 +37,7 @@ public class Game {
     private final LongSupplier clock;
     private final List<GameListener> listeners = new CopyOnWriteArrayList<GameListener>();
     private final List<Player> ranking = new ArrayList<Player>();
+    private final QuestionDeck questions;
 
     private int current;
     private GamePhase phase = GamePhase.ROLL;
@@ -43,6 +46,8 @@ public class Game {
     private List<Move> legalMoves = Collections.emptyList();
     private final long startMillis;
     private long endMillis = -1;
+    private Question pendingQuestion;
+    private Pawn questionPawn;
 
     /**
      * @param board   הלוח
@@ -51,6 +56,17 @@ public class Game {
      * @param clock   מקור הזמן במילישניות (System::currentTimeMillis, או שעון קבוע בבדיקות)
      */
     public Game(Board board, List<Player> players, Die die, LongSupplier clock) {
+        this(board, players, die, clock, null);
+    }
+
+    /**
+     * @param board     הלוח
+     * @param players   השחקנים לפי סדר התורות (FR-07)
+     * @param die       הקובייה
+     * @param clock     מקור הזמן במילישניות
+     * @param questions השאלות של המשחק, או null בלי שאלות (ואז משבצת שאלה מתנהגת כמשבצת רגילה)
+     */
+    public Game(Board board, List<Player> players, Die die, LongSupplier clock, QuestionDeck questions) {
         if (players.size() < 2 || players.size() > 4) {
             throw new IllegalArgumentException("Game needs 2 to 4 players");
         }
@@ -58,6 +74,7 @@ public class Game {
         this.players = Collections.unmodifiableList(new ArrayList<Player>(players));
         this.die = die;
         this.clock = clock;
+        this.questions = questions;
         this.startMillis = clock.getAsLong();
     }
 
@@ -102,6 +119,16 @@ public class Game {
     /** @return השחקנים לפי סדר הסיום, כולל המקום האחרון בסוף המשחק */
     public List<Player> getRanking() {
         return Collections.unmodifiableList(ranking);
+    }
+
+    /** @return השאלה שמחכה לתשובה בשלב {@link GamePhase#QUESTION}, אחרת null */
+    public Question getPendingQuestion() {
+        return pendingQuestion;
+    }
+
+    /** @return הכלי שעל משבצת השאלה; בעליו הוא מי שעונה (FR-27), או null */
+    public Pawn getQuestionPawn() {
+        return questionPawn;
     }
 
     public boolean isOver() {
@@ -232,6 +259,9 @@ public class Game {
     /**
      * מבצע מהלך חוקי (FR-20 עד FR-22): מזיז את הכלי, אוכל כלי יחיד של יריב במשבצת לא מוגנת,
      * מעדכן סיום ודירוג, ונותן הטלה נוספת אם יצא 6.
+     * <p>
+     * אם הכלי נחת על משבצת שאלה, האכילה קורית קודם (FR-39), המשחק עובר לשלב
+     * {@link GamePhase#QUESTION} והתור ממשיך רק אחרי {@link #answer(int)}.
      *
      * @param move אחד מהמהלכים ב-{@link #getLegalMoves()}
      * @return מה קרה
@@ -248,54 +278,81 @@ public class Game {
         pawn.setPathIndex(move.getTo());
         legalMoves = Collections.emptyList();
 
-        Square target = squareOf(pawn);
-        List<Pawn> captured = new ArrayList<Pawn>();
-        if (!target.isSafe()) {
-            Map<Player, List<Pawn>> byOwner = new HashMap<Player, List<Pawn>>();
-            for (Pawn other : pawnsAt(target)) {
-                if (other.getOwner() != player) {
-                    List<Pawn> list = byOwner.get(other.getOwner());
-                    if (list == null) {
-                        list = new ArrayList<Pawn>();
-                        byOwner.put(other.getOwner(), list);
-                    }
-                    list.add(other);
-                }
+        List<Pawn> captured = captureAt(player, squareOf(pawn));
+        Question question = drawQuestion(pawn);
+        if (question != null) {
+            MoveResult result = new MoveResult(move, captured, false, false, false, false, question);
+            for (GameListener l : listeners) {
+                l.onMoved(result);
             }
-            for (List<Pawn> list : byOwner.values()) {
-                if (list.size() == 1) {
-                    list.get(0).sendToBase();
-                    captured.add(list.get(0));
-                }
-            }
+            return result;
         }
 
         boolean reachedFinish = isFinished(pawn);
-        boolean playerFinished = false;
-        if (reachedFinish && allFinished(player)) {
-            playerFinished = true;
-            ranking.add(player);
-            player.setPlace(ranking.size());
-        }
-
+        boolean playerFinished = reachedFinish && recordFinish(player);
         boolean gameOver = checkGameOver();
         boolean extraTurn = !gameOver && lastRoll == 6 && !player.isDone();
         MoveResult result = new MoveResult(move, captured, reachedFinish, playerFinished, extraTurn, gameOver);
         for (GameListener l : listeners) {
             l.onMoved(result);
         }
+        endMove(gameOver, extraTurn);
+        return result;
+    }
 
-        if (gameOver) {
-            phase = GamePhase.OVER;
-            endMillis = clock.getAsLong();
-            for (GameListener l : listeners) {
-                l.onGameOver(getRanking());
-            }
-        } else if (extraTurn) {
-            phase = GamePhase.ROLL;
-        } else {
-            advanceTurn();
+    /**
+     * עונה על השאלה שמחכה (FR-38 עד FR-41) ומזיז את הכלי לפי התשובה: קדימה בתשובה נכונה ואחורה
+     * באותו מספר צעדים בתשובה שגויה (1/2/3 לפי רמת השאלה, FR-40).
+     * <ul>
+     *   <li>קדימה נכנסים לבית רק במספר מדויק; מספר גדול מדי לא מזיז את הכלי (FR-24).</li>
+     *   <li>אחורה הכלי חוזר לאורך המסלול שעבר, ולא מעבר למשבצת ההתחלה שלו (FR-26).</li>
+     *   <li>הכלי לא נוחת על Double Block של יריב ולא עובר אותו, ונעצר לפניו (FR-33).</li>
+     *   <li>במשבצת שהכלי הגיע אליה יש אכילה כרגיל, גם אחורה (FR-29).</li>
+     *   <li>אם הכלי נחת על עוד משבצת שאלה, היא מופעלת מיד באותו תור (FR-27).</li>
+     * </ul>
+     *
+     * @param choice האינדקס של התשובה שנבחרה, 0 עד 3
+     * @return מה קרה
+     * @throws IllegalStateException    אם אין שאלה שמחכה לתשובה
+     * @throws IllegalArgumentException אם האינדקס לא בין 0 ל-3
+     */
+    public AnswerResult answer(int choice) {
+        if (phase != GamePhase.QUESTION) {
+            throw new IllegalStateException("No question to answer: " + phase);
         }
+        AnswerCheck check = pendingQuestion.check(choice);
+        Pawn pawn = questionPawn;
+        Player player = pawn.getOwner();
+        pendingQuestion = null;
+        questionPawn = null;
+
+        int from = pawn.getPathIndex();
+        int[] target = new int[1];
+        AnswerResult.Limit limit = questionTarget(pawn, check.getSignedSteps(), target);
+        int to = target[0];
+        pawn.setPathIndex(to);
+
+        List<Pawn> captured = Collections.emptyList();
+        Question next = null;
+        if (to != from) {
+            captured = captureAt(player, squareOf(pawn));
+            next = drawQuestion(pawn);
+        }
+        if (next != null) {
+            AnswerResult result = new AnswerResult(check, pawn, from, to, limit, captured,
+                    false, false, false, false, next);
+            fireAnswered(result);
+            return result;
+        }
+
+        boolean reachedFinish = to != from && isFinished(pawn);
+        boolean playerFinished = reachedFinish && recordFinish(player);
+        boolean gameOver = checkGameOver();
+        boolean extraTurn = !gameOver && lastRoll == 6 && !player.isDone();
+        AnswerResult result = new AnswerResult(check, pawn, from, to, limit, captured,
+                reachedFinish, playerFinished, extraTurn, gameOver, null);
+        fireAnswered(result);
+        endMove(gameOver, extraTurn);
         return result;
     }
 
@@ -342,6 +399,116 @@ public class Game {
             }
         }
         return full.isEmpty() ? partial : full;
+    }
+
+    /** אוכל כלי יחיד של כל יריב במשבצת, אם היא לא מוגנת. */
+    private List<Pawn> captureAt(Player player, Square target) {
+        List<Pawn> captured = new ArrayList<Pawn>();
+        if (target.isSafe()) {
+            return captured;
+        }
+        Map<Player, List<Pawn>> byOwner = new HashMap<Player, List<Pawn>>();
+        for (Pawn other : pawnsAt(target)) {
+            if (other.getOwner() != player) {
+                List<Pawn> list = byOwner.get(other.getOwner());
+                if (list == null) {
+                    list = new ArrayList<Pawn>();
+                    byOwner.put(other.getOwner(), list);
+                }
+                list.add(other);
+            }
+        }
+        for (List<Pawn> list : byOwner.values()) {
+            if (list.size() == 1) {
+                list.get(0).sendToBase();
+                captured.add(list.get(0));
+            }
+        }
+        return captured;
+    }
+
+    /**
+     * אם הכלי על משבצת שאלה ויש שאלות במשחק: שולף שאלה ברמת המשבצת (FR-38) ועובר לשלב השאלה.
+     *
+     * @return השאלה, או null אם אין שאלה
+     */
+    private Question drawQuestion(Pawn pawn) {
+        Square square = squareOf(pawn);
+        if (questions == null || !(square instanceof QuestionSquare)) {
+            return null;
+        }
+        pendingQuestion = questions.next(((QuestionSquare) square).getLevel());
+        questionPawn = pawn;
+        phase = GamePhase.QUESTION;
+        return pendingQuestion;
+    }
+
+    /**
+     * לאן הכלי זז אחרי תשובה (FR-24, FR-26, FR-33).
+     *
+     * @param steps  חיובי קדימה, שלילי אחורה
+     * @param target מקבל את המקום החדש במסלול
+     * @return למה הכלי זז פחות מ-steps, או NONE
+     */
+    private AnswerResult.Limit questionTarget(Pawn pawn, int steps, int[] target) {
+        List<Square> path = board.getPath(pawn.getColor());
+        Player player = pawn.getOwner();
+        int from = pawn.getPathIndex();
+        target[0] = from;
+        if (steps > 0) {
+            int to = from + steps;
+            if (to > board.getFinishIndex()) {
+                return AnswerResult.Limit.FINISH_NOT_EXACT;
+            }
+            for (int i = from + 1; i <= to; i++) {
+                if (isBlockedFor(path.get(i), player)) {
+                    target[0] = i - 1;
+                    return AnswerResult.Limit.DOUBLE_BLOCK;
+                }
+            }
+            target[0] = to;
+            return AnswerResult.Limit.NONE;
+        }
+        int to = Math.max(0, from + steps);
+        for (int i = from - 1; i >= to; i--) {
+            if (isBlockedFor(path.get(i), player)) {
+                target[0] = i + 1;
+                return AnswerResult.Limit.DOUBLE_BLOCK;
+            }
+        }
+        target[0] = to;
+        return to == from + steps ? AnswerResult.Limit.NONE : AnswerResult.Limit.START_SQUARE;
+    }
+
+    /** אם כל הכלים של השחקן בבית: רושם את המקום שלו בדירוג. */
+    private boolean recordFinish(Player player) {
+        if (!allFinished(player)) {
+            return false;
+        }
+        ranking.add(player);
+        player.setPlace(ranking.size());
+        return true;
+    }
+
+    /** אחרי שהמהלך (והשאלות שבעקבותיו) הסתיים: סיום משחק, הטלה נוספת או מעבר תור. */
+    private void endMove(boolean gameOver, boolean extraTurn) {
+        if (gameOver) {
+            phase = GamePhase.OVER;
+            endMillis = clock.getAsLong();
+            for (GameListener l : listeners) {
+                l.onGameOver(getRanking());
+            }
+        } else if (extraTurn) {
+            phase = GamePhase.ROLL;
+        } else {
+            advanceTurn();
+        }
+    }
+
+    private void fireAnswered(AnswerResult result) {
+        for (GameListener l : listeners) {
+            l.onAnswered(result);
+        }
     }
 
     private boolean allFinished(Player player) {

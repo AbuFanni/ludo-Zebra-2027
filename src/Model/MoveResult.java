@@ -14,15 +14,22 @@ public final class MoveResult {
     private final boolean playerFinished;
     private final boolean extraTurn;
     private final boolean gameOver;
+    private final Question question;
 
     MoveResult(Move move, List<Pawn> captured, boolean reachedFinish, boolean playerFinished,
                boolean extraTurn, boolean gameOver) {
+        this(move, captured, reachedFinish, playerFinished, extraTurn, gameOver, null);
+    }
+
+    MoveResult(Move move, List<Pawn> captured, boolean reachedFinish, boolean playerFinished,
+               boolean extraTurn, boolean gameOver, Question question) {
         this.move = move;
         this.captured = Collections.unmodifiableList(captured);
         this.reachedFinish = reachedFinish;
         this.playerFinished = playerFinished;
         this.extraTurn = extraTurn;
         this.gameOver = gameOver;
+        this.question = question;
     }
 
     public Move getMove() {
@@ -50,5 +57,13 @@ public final class MoveResult {
 
     public boolean isGameOver() {
         return gameOver;
+    }
+
+    /**
+     * @return השאלה שצריך לענות עליה אם הכלי נחת על משבצת שאלה (FR-38), אחרת null. כשיש שאלה, התור
+     *         ממשיך רק אחרי {@link Game#answer(int)}.
+     */
+    public Question getQuestion() {
+        return question;
     }
 }
