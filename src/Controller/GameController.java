@@ -1,7 +1,9 @@
 package Controller;
 
 import java.io.IOException;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
@@ -27,14 +29,19 @@ import Model.QuestionFileException;
 import Model.QuestionRepository;
 import Model.RollResult;
 import Model.StepDie;
+import Model.SurpriseDeck;
+import Model.SurpriseEvent;
+import Model.SurpriseResult;
 import View.Dialogs;
 import View.GameScreenPanel;
 import View.MainFrame;
 import View.QuestionDialog;
+import View.SurpriseDialog;
 
 /**
  * מחבר בין מסך המשחק למודל: הטלת קובייה, בחירת כלי, השעון, יומן הפעולות ושמירת ההיסטוריה בסוף
- * (FR-12, FR-13, FR-15, FR-19 עד FR-23), ושאלות על משבצת {@code ?} (FR-38 עד FR-43).
+ * (FR-12, FR-13, FR-15, FR-19 עד FR-23), שאלות על משבצת {@code ?} (FR-38 עד FR-43), הפתעות על
+ * משבצת {@code !} (FR-44 עד FR-52) ומסך הסיום (FR-53, FR-54).
  * <p>
  * במקור ({@code GamePanel} ו-{@code Gameplay} בפרויקט Ludo-Griniaris-Game) המאזינים של הכפתורים
  * הכילו את החוקים עצמם. כאן ה-Controller רק מעביר את הפעולה למודל ומעדכן את המסך לפי
@@ -94,7 +101,8 @@ public class GameController implements GameListener {
         stop();
         Board board = BoardBuilder.build(settings.getDifficulty(), random);
         List<Player> players = settings.createPlayers();
-        game = new Game(board, players, new StepDie(random), System::currentTimeMillis, deck);
+        game = new Game(board, players, new StepDie(random), System::currentTimeMillis, deck,
+                new SurpriseDeck(random));
         game.addListener(this);
         view.showGame(game);
         view.appendLog("המשחק התחיל ברמה " + settings.getDifficulty().getHebrewName()
@@ -136,7 +144,8 @@ public class GameController implements GameListener {
     }
 
     private String reasonCannotMove(Pawn pawn) {
-        int roll = game.getLastRoll();
+        // אחרי הטלת UltraBoost של הפתעה זזים לפי הצעדים שלה (FR-51)
+        int roll = game.getSpecialSteps() >= 0 ? game.getSpecialSteps() : game.getLastRoll();
         if (pawn.isInBase()) {
             return roll == 6 ? "משבצת ההתחלה חסומה ב-Double Block" : "יוצאים מהטירה רק ב-6";
         }
@@ -222,6 +231,71 @@ public class GameController implements GameListener {
         }
     }
 
+    // ------------------------------------------------------------ הפתעות
+
+    @Override
+    public void onSurprise(SurpriseEvent event, Pawn pawn) {
+        view.appendLog(pawn.getOwner().getName() + " נחת על משבצת הפתעה: " + event.getHebrewName() + "!");
+        view.setRollEnabled(false);
+        view.setHint("הפתעה!");
+        view.getBoardPanel().repaint();
+        if (!asking) {
+            SwingUtilities.invokeLater(this::askPendingQuestions);
+        }
+    }
+
+    /** מציג את חלון ההפתעה (FR-44) ומעביר לו את הפעולות במשחק. */
+    private void showSurprise() {
+        final Game current = game;
+        Map<Player, List<Pawn>> opponents = new LinkedHashMap<Player, List<Pawn>>();
+        for (Player p : current.surpriseOpponents()) {
+            opponents.put(p, current.surpriseTargets(p));
+        }
+        SurpriseDialog.show(frame, current.getPendingSurprise(), current.getSurprisePawn(), opponents,
+                new SurpriseDialog.Actions() {
+                    @Override
+                    public SurpriseResult resolve() {
+                        return current.resolveSurprise();
+                    }
+
+                    @Override
+                    public SurpriseResult moveOpponent(Pawn target) {
+                        return current.moveOpponent(target);
+                    }
+
+                    @Override
+                    public SurpriseResult rollUltraBoost() {
+                        return current.rollUltraBoost();
+                    }
+                });
+    }
+
+    @Override
+    public void onSurpriseResolved(SurpriseResult r) {
+        if (r.getStepRoll() > 0) {
+            view.showDice(r.getStepRoll());
+        }
+        view.appendLog(SurpriseDialog.describe(r));
+        Player owner = r.getPawn().getOwner();
+        if (r.hasMoves()) {
+            view.setRollEnabled(false);
+            view.setHint(owner.getName() + ": בחרו כלי מסומן (" + r.getUltraBoostSteps() + " צעדים"
+                    + (r.getStepRoll() == 6 ? ", או הוצאה מהטירה" : "") + ")");
+        } else if (r.isContinues() && game != null && game.getPhase() == GamePhase.QUESTION) {
+            announceQuestion(game.getQuestionPawn().getOwner(), game.getPendingQuestion());
+        } else if (r.isExtraTurn()) {
+            view.setRollEnabled(true);
+            view.setHint("יצא 6: הטילו שוב");
+        }
+        view.updatePlayers(game);
+        view.getBoardPanel().repaint();
+    }
+
+    @Override
+    public void onTurnSkipped(Player player) {
+        view.appendLog(player.getName() + " מפסיד את התור הזה (הפתעה).");
+    }
+
     /**
      * מציג את השאלה שמחכה, ושולח את התשובה למודל. אם הכלי נחת על עוד משבצת שאלה, שואלים שוב באותו
      * תור (FR-27).
@@ -232,7 +306,11 @@ public class GameController implements GameListener {
         }
         asking = true;
         try {
-            while (game != null && game.getPhase() == GamePhase.QUESTION) {
+            while (game != null && (game.getPhase() == GamePhase.QUESTION || game.getPhase() == GamePhase.SURPRISE)) {
+                if (game.getPhase() == GamePhase.SURPRISE) {
+                    showSurprise(); // FR-27: גם הפתעה אחרי שאלה, או שאלה אחרי הפתעה, באותו תור
+                    continue;
+                }
                 Question q = game.getPendingQuestion();
                 Player answerer = game.getQuestionPawn().getOwner();
                 final Game current = game;
@@ -293,22 +371,22 @@ public class GameController implements GameListener {
         updateClock();
         view.setRollEnabled(false);
         view.updatePlayers(game);
-        StringBuilder sb = new StringBuilder("המשחק נגמר!\n\n");
-        for (Player p : ranking) {
-            sb.append("מקום ").append(p.getPlace()).append(": ").append(p.getName()).append('\n');
-        }
-        sb.append("\nמשך המשחק: ").append(HistoryRepository.formatDuration(game.getElapsedMillis()));
+        view.appendLog("המשחק נגמר: " + ranking.get(ranking.size() - 1).getName() + " נשאר אחרון.");
+        final List<Player> places = ranking;
+        final String duration = HistoryRepository.formatDuration(game.getElapsedMillis());
+        final String difficulty = game.getBoard().getDifficulty().getHebrewName();
+        String note;
         try {
             GameRecord rec = history.save(game);
-            sb.append("\nנשמר בהיסטוריה כמשחק מס' ").append(rec.getGameId()).append('.');
+            note = "נשמר בהיסטוריה כמשחק מס' " + rec.getGameId() + ".";
         } catch (IOException e) {
-            sb.append("\nלא הצלחנו לשמור את המשחק בהיסטוריה: ").append(e.getMessage());
+            note = "לא הצלחנו לשמור את המשחק בהיסטוריה: " + e.getMessage();
         }
-        final String message = sb.toString();
+        final String saveNote = note;
+        // מסך הסיום (FR-54): המקומות, הזמן והרמה, עם "משחק חדש" ו"לתפריט"
         Runnable show = () -> {
-            Dialogs.info(frame, "סיום משחק", message);
             stop();
-            main.showHistory();
+            main.showGameOver(places, duration, difficulty, saveNote);
         };
         if (asking) {
             // המשחק נגמר מתשובה לשאלה: ההודעה מחכה עד שחלון השאלה נסגר, ולא נפתחת מעליו
