@@ -32,6 +32,7 @@ public final class ModelTests {
         run("third six cancelled", ModelTests::thirdSixCancelled);
         run("six without move still rolls again", ModelTests::sixWithoutMoveRollsAgain);
         DieAndTurnTests.runAll();
+        MovementTests.runAll();
         run("capture sends pawn to base", ModelTests::captureSendsToBase);
         run("no capture on safe square", ModelTests::noCaptureOnSafe);
         run("double block stops opponent", ModelTests::doubleBlockStops);
