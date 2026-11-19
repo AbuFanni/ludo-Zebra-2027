@@ -214,8 +214,8 @@ final class SurpriseTests {
         g.roll();
         MoveResult r = g.move(g.legalMoveFor(p));
         checkEq(GamePhase.SURPRISE, g.getPhase(), "phase");
-        checkEq(SurpriseEvent.BACK_THREE, g.getPendingSurprise(), "pending event");
-        check(g.getSurprisePawn() == p, "the pawn on the ! square");
+        checkEq(SurpriseEvent.BACK_THREE, g.getSurprises().getPendingSurprise(), "pending event");
+        check(g.getSurprises().getSurprisePawn() == p, "the pawn on the ! square");
         checkEq(1, heard.size(), "listener told once");
         checkEq("Green", g.getCurrentPlayer().getName(), "turn not passed yet");
         check(!r.isExtraTurn() && !r.isGameOver(), "no end-of-turn yet");
@@ -236,7 +236,7 @@ final class SurpriseTests {
         g.move(g.legalMoveFor(p));
         checkEq(GamePhase.ROLL, g.getPhase(), "no surprise phase");
         checkEq("Blue", g.getCurrentPlayer().getName(), "turn passed");
-        check(g.getPendingSurprise() == null, "no pending surprise");
+        check(g.getSurprises().getPendingSurprise() == null, "no pending surprise");
     }
 
     // ------------------------------------------------------------- אירועים
@@ -245,7 +245,7 @@ final class SurpriseTests {
         Spot s = spot(Difficulty.MEDIUM, reachable(2));
         Game g = land(s, deck(SurpriseEvent.JUMP_TO_FINISH), 2);
         Pawn p = pawn(g, 0, 0);
-        SurpriseResult r = g.resolveSurprise();
+        SurpriseResult r = g.getSurprises().resolveSurprise();
         checkEq(s.board.getFinishIndex(), p.getPathIndex(), "pawn in the finish");
         check(r.isReachedFinish(), "reached finish");
         check(!r.isPlayerFinished(), "other pawns still out");
@@ -262,7 +262,7 @@ final class SurpriseTests {
         p.setPathIndex(s.index - 2);
         g.roll();
         g.move(g.legalMoveFor(p));
-        SurpriseResult r = g.resolveSurprise();
+        SurpriseResult r = g.getSurprises().resolveSurprise();
         check(r.isPlayerFinished(), "player finished");
         checkEq(1, g.getPlayers().get(0).getPlace(), "first place");
         check(r.isGameOver() && g.isOver(), "two players: the game is over");
@@ -273,7 +273,7 @@ final class SurpriseTests {
         Spot s = spot(Difficulty.MEDIUM, reachable(2));
         Game g = land(s, deck(SurpriseEvent.BACK_TO_BASE), 2);
         Pawn p = pawn(g, 0, 0);
-        SurpriseResult r = g.resolveSurprise();
+        SurpriseResult r = g.getSurprises().resolveSurprise();
         check(p.isInBase(), "pawn back in the castle");
         checkEq(Pawn.IN_BASE, r.getTo(), "result says castle");
         checkEq("Blue", g.getCurrentPlayer().getName(), "turn passed");
@@ -283,7 +283,7 @@ final class SurpriseTests {
         Spot s = spot(Difficulty.MEDIUM, reachable(2));
         Game g = land(s, deck(SurpriseEvent.BACK_THREE), 2);
         Pawn p = pawn(g, 0, 0);
-        SurpriseResult r = g.resolveSurprise();
+        SurpriseResult r = g.getSurprises().resolveSurprise();
         checkEq(s.index - 3, p.getPathIndex(), "3 steps back");
         checkEq(AnswerResult.Limit.NONE, r.getLimit(), "no limit");
         checkEq(GamePhase.ROLL, g.getPhase(), "back to rolling");
@@ -304,7 +304,7 @@ final class SurpriseTests {
         p.setPathIndex(0);
         g.roll();
         g.move(g.legalMoveFor(p));
-        SurpriseResult r = g.resolveSurprise();
+        SurpriseResult r = g.getSurprises().resolveSurprise();
         checkEq(0, p.getPathIndex(), "stopped on the start square");
         checkEq(AnswerResult.Limit.START_SQUARE, r.getLimit(), "limit");
     }
@@ -321,7 +321,7 @@ final class SurpriseTests {
         putBlue(g, s.board, 0, s.index - 3);
         g.roll();
         g.move(g.legalMoveFor(p));
-        SurpriseResult r = g.resolveSurprise();
+        SurpriseResult r = g.getSurprises().resolveSurprise();
         checkEq(1, r.getCaptured().size(), "captured");
         check(blue.isInBase(), "blue back in its castle");
     }
@@ -338,7 +338,7 @@ final class SurpriseTests {
         putBlue(g, s.board, 1, s.index - 2);
         g.roll();
         g.move(g.legalMoveFor(p));
-        SurpriseResult r = g.resolveSurprise();
+        SurpriseResult r = g.getSurprises().resolveSurprise();
         checkEq(s.index - 1, p.getPathIndex(), "stopped before the block");
         checkEq(AnswerResult.Limit.DOUBLE_BLOCK, r.getLimit(), "limit");
         check(!pawn(g, 1, 0).isInBase() && !pawn(g, 1, 1).isInBase(), "block not captured");
@@ -355,14 +355,14 @@ final class SurpriseTests {
                 skipped.add(player);
             }
         });
-        g.resolveSurprise();
-        check(g.losesNextTurn(g.getPlayers().get(0)), "green marked");
+        g.getSurprises().resolveSurprise();
+        check(g.getSurprises().losesNextTurn(g.getPlayers().get(0)), "green marked");
         checkEq("Blue", g.getCurrentPlayer().getName(), "turn passed");
         g.roll(); // כחול: 1 ואין מהלך
         checkEq(1, skipped.size(), "one turn skipped");
         check(skipped.get(0) == g.getPlayers().get(0), "green skipped");
         checkEq("Blue", g.getCurrentPlayer().getName(), "blue plays again");
-        check(!g.losesNextTurn(g.getPlayers().get(0)), "only one turn is lost");
+        check(!g.getSurprises().losesNextTurn(g.getPlayers().get(0)), "only one turn is lost");
         g.roll();
         checkEq("Green", g.getCurrentPlayer().getName(), "green back in the order");
     }
@@ -370,7 +370,7 @@ final class SurpriseTests {
     private static void loseTurnCancelsSix() {
         Spot s = spot(Difficulty.MEDIUM, reachable(6));
         Game g = land(s, deck(SurpriseEvent.LOSE_NEXT_TURN), 6);
-        SurpriseResult r = g.resolveSurprise();
+        SurpriseResult r = g.getSurprises().resolveSurprise();
         check(!r.isExtraTurn(), "no extra roll");
         checkEq("Blue", g.getCurrentPlayer().getName(), "turn passed despite the 6");
     }
@@ -378,7 +378,7 @@ final class SurpriseTests {
     private static void otherEventsKeepSix() {
         Spot s = spot(Difficulty.MEDIUM, reachable(6));
         Game g = land(s, deck(SurpriseEvent.BACK_TO_BASE), 6);
-        SurpriseResult r = g.resolveSurprise();
+        SurpriseResult r = g.getSurprises().resolveSurprise();
         check(r.isExtraTurn(), "extra roll kept");
         checkEq("Green", g.getCurrentPlayer().getName(), "green rolls again");
         checkEq(GamePhase.ROLL, g.getPhase(), "roll phase");
@@ -427,8 +427,8 @@ final class SurpriseTests {
             Game g = land(s, deck(SurpriseEvent.MOVE_OPPONENT), 2, c[0]);
             Pawn blue = pawn(g, 1, 0);
             blue.setPathIndex(j);
-            checkEq(1, g.surpriseOpponents().size(), "one opponent to choose");
-            SurpriseResult r = g.moveOpponent(blue);
+            checkEq(1, g.getSurprises().surpriseOpponents().size(), "one opponent to choose");
+            SurpriseResult r = g.getSurprises().moveOpponent(blue);
             checkEq(c[0], r.getStepRoll(), "new step roll");
             checkEq(j - c[1], blue.getPathIndex(), "roll " + c[0] + " moves back " + c[1]);
             check(r.getMovedPawn() == blue, "moved pawn");
@@ -444,17 +444,17 @@ final class SurpriseTests {
         pawn(g, 1, 1).setPathIndex(0);
         pawn(g, 1, 2).setPathIndex(s.board.getFinishIndex() - 1);
         pawn(g, 1, 3).setPathIndex(blueSpot(s.board));
-        List<Pawn> targets = g.surpriseTargets(blue);
+        List<Pawn> targets = g.getSurprises().surpriseTargets(blue);
         checkEq(1, targets.size(), "one pawn on the shared track");
         check(targets.get(0) == pawn(g, 1, 3), "the pawn on the shared track");
-        check(!g.surpriseOpponents().contains(g.getPlayers().get(0)), "own player is not an opponent");
+        check(!g.getSurprises().surpriseOpponents().contains(g.getPlayers().get(0)), "own player is not an opponent");
     }
 
     private static void moveOpponentCancelled() {
         Spot s = spot(Difficulty.MEDIUM, reachable(2));
         Game g = land(s, deck(SurpriseEvent.MOVE_OPPONENT), 2);
-        check(g.surpriseOpponents().isEmpty(), "blue has no pawn on the track");
-        SurpriseResult r = g.resolveSurprise();
+        check(g.getSurprises().surpriseOpponents().isEmpty(), "blue has no pawn on the track");
+        SurpriseResult r = g.getSurprises().resolveSurprise();
         check(r.isCancelled(), "cancelled");
         checkEq("Blue", g.getCurrentPlayer().getName(), "turn passed");
     }
@@ -464,19 +464,19 @@ final class SurpriseTests {
         Game g = land(s, deck(SurpriseEvent.MOVE_OPPONENT), 2);
         pawn(g, 1, 0).setPathIndex(blueSpot(s.board));
         try {
-            g.moveOpponent(pawn(g, 0, 1));
+            g.getSurprises().moveOpponent(pawn(g, 0, 1));
             throw new AssertionError("own pawn accepted");
         } catch (IllegalArgumentException expected) {
             // ok
         }
         try {
-            g.moveOpponent(pawn(g, 1, 1));
+            g.getSurprises().moveOpponent(pawn(g, 1, 1));
             throw new AssertionError("pawn in the castle accepted");
         } catch (IllegalArgumentException expected) {
             // ok
         }
         try {
-            g.resolveSurprise();
+            g.getSurprises().resolveSurprise();
             throw new AssertionError("resolved without choosing although an opponent can be moved");
         } catch (IllegalStateException expected) {
             // ok
@@ -490,25 +490,25 @@ final class SurpriseTests {
         Game g = land(s, deck(SurpriseEvent.ULTRA_BOOST, 4), 2, 2);
         Pawn p = pawn(g, 0, 0);
         int from = p.getPathIndex();
-        SurpriseResult r = g.rollUltraBoost();
+        SurpriseResult r = g.getSurprises().rollUltraBoost();
         checkEq(2, r.getStepRoll(), "step die");
         checkEq(4, r.getUltraBoostRoll(), "UltraBoost");
         checkEq(6, r.getUltraBoostSteps(), "steps");
         check(r.hasMoves() && r.isContinues(), "player chooses a pawn");
         checkEq(GamePhase.MOVE, g.getPhase(), "move phase");
-        checkEq(6, g.getSpecialSteps(), "special steps shown");
+        checkEq(6, g.getSurprises().getSpecialSteps(), "special steps shown");
         Move m = g.legalMoveFor(p);
         check(m != null, "pawn can move");
         checkEq(from + 6, m.getTo(), "move uses the special steps");
         g.move(m);
         checkEq("Blue", g.getCurrentPlayer().getName(), "turn passed");
-        checkEq(-1, g.getSpecialSteps(), "special roll over");
+        checkEq(-1, g.getSurprises().getSpecialSteps(), "special roll over");
     }
 
     private static void ultraBoostLeavesBase() {
         Spot s = spot(Difficulty.MEDIUM, reachable(2));
         Game g = land(s, deck(SurpriseEvent.ULTRA_BOOST, 3), 2, 6);
-        g.rollUltraBoost();
+        g.getSurprises().rollUltraBoost();
         Move out = g.legalMoveFor(pawn(g, 0, 1));
         check(out != null && out.getFrom() == Pawn.IN_BASE, "can take a pawn out on 6");
         checkEq(0, out.getTo(), "to the start square");
@@ -518,7 +518,7 @@ final class SurpriseTests {
         Spot s = spot(Difficulty.MEDIUM, reachable(6));
         // 6 לנחיתה (רצף 1), הטלה מיוחדת 6, ואז 6 (רצף 2) ו-6 (רצף 3 – מבוטל)
         Game g = land(s, deck(SurpriseEvent.ULTRA_BOOST, 2), 6, 6, 6, 6);
-        g.rollUltraBoost();
+        g.getSurprises().rollUltraBoost();
         g.move(g.getLegalMoves().get(0));
         checkEq("Green", g.getCurrentPlayer().getName(), "extra roll after the special 6");
         checkEq(GamePhase.ROLL, g.getPhase(), "roll phase");
@@ -533,7 +533,7 @@ final class SurpriseTests {
         Spot s = spot(Difficulty.MEDIUM, reachable(2));
         Game g = land(s, deck(SurpriseEvent.ULTRA_BOOST, 1), 2, 5);
         int before = pawn(g, 0, 0).getPathIndex();
-        SurpriseResult r = g.rollUltraBoost();
+        SurpriseResult r = g.getSurprises().rollUltraBoost();
         checkEq(0, r.getUltraBoostSteps(), "factor 0");
         check(!r.hasMoves(), "no move");
         checkEq(before, pawn(g, 0, 0).getPathIndex(), "pawn did not move");
@@ -544,14 +544,14 @@ final class SurpriseTests {
         Spot s = spot(Difficulty.MEDIUM, reachable(2));
         Game g = game(s.board, deck(SurpriseEvent.BACK_THREE), 2);
         try {
-            g.resolveSurprise();
+            g.getSurprises().resolveSurprise();
             throw new AssertionError("resolved without a surprise");
         } catch (IllegalStateException expected) {
             // ok
         }
         Game u = land(s, deck(SurpriseEvent.ULTRA_BOOST, 2), 2, 1);
         try {
-            u.resolveSurprise();
+            u.getSurprises().resolveSurprise();
             throw new AssertionError("UltraBoost resolved without the special roll");
         } catch (IllegalStateException expected) {
             // ok
@@ -589,7 +589,7 @@ final class SurpriseTests {
         p.setPathIndex(s.index - 2);
         g.roll();
         g.move(g.legalMoveFor(p));
-        SurpriseResult r = g.resolveSurprise();
+        SurpriseResult r = g.getSurprises().resolveSurprise();
         check(r.isContinues(), "turn continues");
         checkEq(GamePhase.QUESTION, g.getPhase(), "question asked right away");
         check(g.getQuestionPawn() == p, "the owner answers");
@@ -687,17 +687,17 @@ final class SurpriseTests {
                             g.answer(r.nextInt(Question.ANSWERS));
                             break;
                         case SURPRISE:
-                            SurpriseEvent e = g.getPendingSurprise();
+                            SurpriseEvent e = g.getSurprises().getPendingSurprise();
                             Integer c = seen.get(e);
                             seen.put(e, c == null ? 1 : c + 1);
                             if (e == SurpriseEvent.ULTRA_BOOST) {
-                                g.rollUltraBoost();
-                            } else if (e == SurpriseEvent.MOVE_OPPONENT && !g.surpriseOpponents().isEmpty()) {
-                                List<Player> opp = g.surpriseOpponents();
-                                List<Pawn> targets = g.surpriseTargets(opp.get(r.nextInt(opp.size())));
-                                g.moveOpponent(targets.get(r.nextInt(targets.size())));
+                                g.getSurprises().rollUltraBoost();
+                            } else if (e == SurpriseEvent.MOVE_OPPONENT && !g.getSurprises().surpriseOpponents().isEmpty()) {
+                                List<Player> opp = g.getSurprises().surpriseOpponents();
+                                List<Pawn> targets = g.getSurprises().surpriseTargets(opp.get(r.nextInt(opp.size())));
+                                g.getSurprises().moveOpponent(targets.get(r.nextInt(targets.size())));
                             } else {
-                                g.resolveSurprise();
+                                g.getSurprises().resolveSurprise();
                             }
                             break;
                         default:

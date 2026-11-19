@@ -31,6 +31,7 @@ import Model.RollResult;
 import Model.StepDie;
 import Model.SurpriseDeck;
 import Model.SurpriseEvent;
+import Model.SurpriseHandler;
 import Model.SurpriseResult;
 import View.Dialogs;
 import View.GameScreenPanel;
@@ -145,7 +146,8 @@ public class GameController implements GameListener {
 
     private String reasonCannotMove(Pawn pawn) {
         // אחרי הטלת UltraBoost של הפתעה זזים לפי הצעדים שלה (FR-51)
-        int roll = game.getSpecialSteps() >= 0 ? game.getSpecialSteps() : game.getLastRoll();
+        int special = game.getSurprises().getSpecialSteps();
+        int roll = special >= 0 ? special : game.getLastRoll();
         if (pawn.isInBase()) {
             return roll == 6 ? "משבצת ההתחלה חסומה ב-Double Block" : "יוצאים מהטירה רק ב-6";
         }
@@ -246,7 +248,7 @@ public class GameController implements GameListener {
 
     /** מציג את חלון ההפתעה (FR-44) ומעביר לו את הפעולות במשחק. */
     private void showSurprise() {
-        final Game current = game;
+        final SurpriseHandler current = game.getSurprises();
         Map<Player, List<Pawn>> opponents = new LinkedHashMap<Player, List<Pawn>>();
         for (Player p : current.surpriseOpponents()) {
             opponents.put(p, current.surpriseTargets(p));

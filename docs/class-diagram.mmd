@@ -254,13 +254,7 @@ namespace Model {
     +answer(int choice) AnswerResult
     +getPendingQuestion() Question
     +getQuestionPawn() Pawn
-    +resolveSurprise() SurpriseResult
-    +moveOpponent(Pawn target) SurpriseResult
-    +rollUltraBoost() SurpriseResult
-    +surpriseOpponents() List~Player~
-    +surpriseTargets(Player p) List~Pawn~
-    +getPendingSurprise() SurpriseEvent
-    +getSurprisePawn() Pawn
+    +getSurprises() SurpriseHandler
     +legalMoveFor(Pawn p) Move
     +isBlockedFor(Square s, Player mover) boolean
     +squareOf(Pawn p) Square
@@ -410,6 +404,19 @@ namespace Model {
     ULTRA_BOOST
     +getPercent() int
   }
+  class SurpriseHandler {
+    -SurpriseDeck deck
+    -Set~Player~ skipNextTurn
+    +resolveSurprise() SurpriseResult
+    +moveOpponent(Pawn target) SurpriseResult
+    +rollUltraBoost() SurpriseResult
+    +surpriseOpponents() List~Player~
+    +surpriseTargets(Player p) List~Pawn~
+    +getPendingSurprise() SurpriseEvent
+    ~draw(Pawn p) boolean
+    ~extraRollDue(int lastRoll) boolean
+    ~skipsTurn(Player p) boolean
+  }
   class SurpriseDeck {
     -Drawer drawer
     -Die ultraBoost
@@ -509,7 +516,9 @@ QuestionRepository ..> QuestionFileException
 DefaultQuestions ..> QuestionFactory
 Game --> QuestionDeck
 Game ..> AnswerResult
-Game --> SurpriseDeck
+Game *-- SurpriseHandler
+SurpriseHandler --> SurpriseDeck
+SurpriseHandler ..> Game : uses capture, back moves, questions
 SurpriseDeck ..> SurpriseEvent
 Game ..> SurpriseResult
 SurpriseResult --> SurpriseEvent

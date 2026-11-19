@@ -38,7 +38,7 @@ Java (Swing), ארכיטקטורת MVC בחבילות `Model`, `View` ו-`Contro
 | `Model` | `Game`, `GamePhase`, `Pawn`, `Move`, `MoveResult`, `RollResult`, `GameListener`, `Die`, `StepDie` | FR-15, FR-19 עד FR-23 | וסים |
 | `Controller` | `GameController` | חיבור מסך המשחק למודל | מוחמד, וסים |
 | `Model` / `View` / `Controller` | `Question`, `AnswerCheck`, `AnswerResult`, `QuestionFactory`, `QuestionDeck`, `QuestionRepository`, `QuestionFileException`, `DefaultQuestions`, `QuestionDialog`, שלב השאלה ב-`Game` וב-`GameController` | FR-38 עד FR-43, FR-74 (US-7) | מוחמד |
-| `Model` / `View` / `Controller` | `SurpriseEvent`, `SurpriseDeck`, `SurpriseResult`, `SurpriseDialog`, `GameOverPanel`, שלב ההפתעה ב-`Game` וב-`GameController`, מסך הסיום ב-`MainController` | FR-44 עד FR-54, NFR-11 חלק 2 (US-8, US-9) | נור |
+| `Model` / `View` / `Controller` | `SurpriseHandler` (כל לוגיקת ההפתעות), `SurpriseEvent`, `SurpriseDeck`, `SurpriseResult`, `SurpriseDialog`, `GameOverPanel`, נקודות חיבור קטנות ב-`Game` ושלב ההפתעה ב-`GameController`, מסך הסיום ב-`MainController` | FR-44 עד FR-54, NFR-11 חלק 2 (US-8, US-9) | נור |
 | `Model` / `View` / `Controller` | `HistoryRepository`, `GameRecord`, `HistoryPanel`, `HistoryController` | היסטוריה ב-CSV (מעבר לאיטרציה 1) | לפי חלוקת איטרציה 3 |
 | — | `build.sh`, `build.bat`, `run.bat`, `run.sh` | NFR-08 (JAR שרץ על כל מחשב) | וסים (Scrum master) |
 | `test` | `ModelTests` | בדיקות יחידה | כל אחד לחלק שלו |
