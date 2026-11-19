@@ -20,6 +20,18 @@ public interface GameListener {
     default void onAnswered(AnswerResult result) {
     }
 
+    /** כלי נחת על משבצת הפתעה והוגרל אירוע (FR-44); האירוע מחכה לביצוע. */
+    default void onSurprise(SurpriseEvent event, Pawn pawn) {
+    }
+
+    /** אירוע הפתעה בוצע (FR-45 עד FR-52). */
+    default void onSurpriseResolved(SurpriseResult result) {
+    }
+
+    /** מדלגים על התור של שחקן שהפסיד את התור הבא באירוע הפתעה (FR-50). */
+    default void onTurnSkipped(Player player) {
+    }
+
     /** התור עבר לשחקן אחר. */
     default void onTurnChanged(Player current) {
     }

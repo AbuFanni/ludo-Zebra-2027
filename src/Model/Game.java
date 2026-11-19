@@ -27,6 +27,8 @@ import java.util.function.LongSupplier;
  *   <li>המשחק נגמר כשכל השחקנים חוץ מאחד סיימו; האחרון מקבל את המקום האחרון.</li>
  *   <li>כלי שנוחת על משבצת שאלה עוצר את התור עד שבעליו עונה (שלב {@link GamePhase#QUESTION}),
  *       והתשובה מזיזה אותו קדימה או אחורה (FR-38 עד FR-43).</li>
+ *   <li>כלי שנוחת על משבצת הפתעה מעביר את הטיפול ל-{@link SurpriseHandler} (FR-44 עד FR-52). כאן
+ *       נשארו רק נקודות החיבור (hooks): הנחיתה, הטלה נוספת ודילוג על תור.</li>
  * </ul>
  */
 public class Game {
@@ -38,6 +40,8 @@ public class Game {
     private final List<GameListener> listeners = new CopyOnWriteArrayList<GameListener>();
     private final List<Player> ranking = new ArrayList<Player>();
     private final QuestionDeck questions;
+    /** משבצות ההפתעה; כל הלוגיקה שלהן במחלקה משלה (US-8). */
+    private final SurpriseHandler surprises;
 
     private int current;
     private GamePhase phase = GamePhase.ROLL;
@@ -67,6 +71,14 @@ public class Game {
      * @param questions השאלות של המשחק, או null בלי שאלות (ואז משבצת שאלה מתנהגת כמשבצת רגילה)
      */
     public Game(Board board, List<Player> players, Die die, LongSupplier clock, QuestionDeck questions) {
+        this(board, players, die, clock, questions, null);
+    }
+
+    /**
+     * @param surprises אירועי ההפתעה, או null בלי הפתעות (ואז משבצת הפתעה היא רק משבצת מוגנת)
+     */
+    public Game(Board board, List<Player> players, Die die, LongSupplier clock, QuestionDeck questions,
+                SurpriseDeck surprises) {
         if (players.size() < 2 || players.size() > 4) {
             throw new IllegalArgumentException("Game needs 2 to 4 players");
         }
@@ -75,6 +87,7 @@ public class Game {
         this.die = die;
         this.clock = clock;
         this.questions = questions;
+        this.surprises = new SurpriseHandler(this, surprises);
         this.startMillis = clock.getAsLong();
     }
 
@@ -129,6 +142,11 @@ public class Game {
     /** @return הכלי שעל משבצת השאלה; בעליו הוא מי שעונה (FR-27), או null */
     public Pawn getQuestionPawn() {
         return questionPawn;
+    }
+
+    /** @return הטיפול במשבצות ההפתעה (FR-44 עד FR-52) */
+    public SurpriseHandler getSurprises() {
+        return surprises;
     }
 
     public boolean isOver() {
@@ -207,6 +225,7 @@ public class Game {
             throw new IllegalStateException("Not the roll phase: " + phase);
         }
         Player player = getCurrentPlayer();
+        surprises.onRoll();
         int value = die.roll();
         lastRoll = value;
         sixesInRow = (value == 6) ? sixesInRow + 1 : 0;
@@ -273,17 +292,22 @@ public class Game {
         if (!legalMoves.contains(move)) {
             throw new IllegalArgumentException("Illegal move: " + move);
         }
-        Player player = getCurrentPlayer();
         Pawn pawn = move.getPawn();
+        // בדרך כלל השחקן שתורו; אחרי UltraBoost של הפתעה על כלי של יריב – בעל הכלי (FR-27)
+        Player player = pawn.getOwner();
         pawn.setPathIndex(move.getTo());
         legalMoves = Collections.emptyList();
 
         List<Pawn> captured = captureAt(player, squareOf(pawn));
         Question question = drawQuestion(pawn);
-        if (question != null) {
+        boolean surprise = question == null && surprises.draw(pawn);
+        if (question != null || surprise) {
             MoveResult result = new MoveResult(move, captured, false, false, false, false, question);
             for (GameListener l : listeners) {
                 l.onMoved(result);
+            }
+            if (surprise) {
+                surprises.fireDrawn();
             }
             return result;
         }
@@ -291,7 +315,7 @@ public class Game {
         boolean reachedFinish = isFinished(pawn);
         boolean playerFinished = reachedFinish && recordFinish(player);
         boolean gameOver = checkGameOver();
-        boolean extraTurn = !gameOver && lastRoll == 6 && !player.isDone();
+        boolean extraTurn = !gameOver && surprises.extraRollDue(lastRoll) && !player.isDone();
         MoveResult result = new MoveResult(move, captured, reachedFinish, playerFinished, extraTurn, gameOver);
         for (GameListener l : listeners) {
             l.onMoved(result);
@@ -338,17 +362,21 @@ public class Game {
             captured = captureAt(player, squareOf(pawn));
             next = drawQuestion(pawn);
         }
-        if (next != null) {
+        boolean surprise = to != from && next == null && surprises.draw(pawn);
+        if (next != null || surprise) {
             AnswerResult result = new AnswerResult(check, pawn, from, to, limit, captured,
                     false, false, false, false, next);
             fireAnswered(result);
+            if (surprise) {
+                surprises.fireDrawn();
+            }
             return result;
         }
 
         boolean reachedFinish = to != from && isFinished(pawn);
         boolean playerFinished = reachedFinish && recordFinish(player);
         boolean gameOver = checkGameOver();
-        boolean extraTurn = !gameOver && lastRoll == 6 && !player.isDone();
+        boolean extraTurn = !gameOver && surprises.extraRollDue(lastRoll) && !player.isDone();
         AnswerResult result = new AnswerResult(check, pawn, from, to, limit, captured,
                 reachedFinish, playerFinished, extraTurn, gameOver, null);
         fireAnswered(result);
@@ -402,7 +430,7 @@ public class Game {
     }
 
     /** אוכל כלי יחיד של כל יריב במשבצת, אם היא לא מוגנת. */
-    private List<Pawn> captureAt(Player player, Square target) {
+    List<Pawn> captureAt(Player player, Square target) {
         List<Pawn> captured = new ArrayList<Pawn>();
         if (target.isSafe()) {
             return captured;
@@ -432,7 +460,7 @@ public class Game {
      *
      * @return השאלה, או null אם אין שאלה
      */
-    private Question drawQuestion(Pawn pawn) {
+    Question drawQuestion(Pawn pawn) {
         Square square = squareOf(pawn);
         if (questions == null || !(square instanceof QuestionSquare)) {
             return null;
@@ -450,7 +478,7 @@ public class Game {
      * @param target מקבל את המקום החדש במסלול
      * @return למה הכלי זז פחות מ-steps, או NONE
      */
-    private AnswerResult.Limit questionTarget(Pawn pawn, int steps, int[] target) {
+    AnswerResult.Limit questionTarget(Pawn pawn, int steps, int[] target) {
         List<Square> path = board.getPath(pawn.getColor());
         Player player = pawn.getOwner();
         int from = pawn.getPathIndex();
@@ -481,7 +509,7 @@ public class Game {
     }
 
     /** אם כל הכלים של השחקן בבית: רושם את המקום שלו בדירוג. */
-    private boolean recordFinish(Player player) {
+    boolean recordFinish(Player player) {
         if (!allFinished(player)) {
             return false;
         }
@@ -491,7 +519,7 @@ public class Game {
     }
 
     /** אחרי שהמהלך (והשאלות שבעקבותיו) הסתיים: סיום משחק, הטלה נוספת או מעבר תור. */
-    private void endMove(boolean gameOver, boolean extraTurn) {
+    void endMove(boolean gameOver, boolean extraTurn) {
         if (gameOver) {
             phase = GamePhase.OVER;
             endMillis = clock.getAsLong();
@@ -521,7 +549,7 @@ public class Game {
     }
 
     /** המשחק נגמר כשנשאר רק שחקן אחד שלא סיים; הוא מקבל את המקום האחרון. */
-    private boolean checkGameOver() {
+    boolean checkGameOver() {
         List<Player> left = new ArrayList<Player>();
         for (Player p : players) {
             if (!p.isDone()) {
@@ -543,11 +571,29 @@ public class Game {
         legalMoves = Collections.emptyList();
         do {
             current = (current + 1) % players.size();
-        } while (players.get(current).isDone());
+        } while (players.get(current).isDone() || surprises.skipsTurn(players.get(current)));
         phase = GamePhase.ROLL;
         for (GameListener l : listeners) {
             l.onTurnChanged(getCurrentPlayer());
         }
+    }
+
+    // ---------------------------------------------------------------- נקודות חיבור ל-SurpriseHandler
+
+    void setPhase(GamePhase phase) {
+        this.phase = phase;
+    }
+
+    void setLegalMoves(List<Move> moves) {
+        this.legalMoves = moves;
+    }
+
+    Die getDie() {
+        return die;
+    }
+
+    List<GameListener> getListeners() {
+        return listeners;
     }
 
     private void fireRolled(RollResult result) {

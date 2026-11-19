@@ -25,6 +25,7 @@ public class MainFrame extends JFrame {
     public static final String GAME = "game";
     public static final String HISTORY = "history";
     public static final String QUESTIONS = "questions";
+    public static final String GAME_OVER = "gameOver";
 
     private final CardLayout cards = new CardLayout();
     private final JPanel root = new JPanel(cards);
@@ -32,6 +33,7 @@ public class MainFrame extends JFrame {
     private final GameSetupPanel setupPanel = new GameSetupPanel();
     private final GameScreenPanel gamePanel = new GameScreenPanel();
     private final HistoryPanel historyPanel = new HistoryPanel();
+    private final GameOverPanel gameOverPanel = new GameOverPanel();
     private final PlaceholderPanel questionsPanel = new PlaceholderPanel(
             "ניהול שאלות", "אשף ניהול השאלות, עם הרשאת מנהל, יתווסף באיטרציה 3.");
     private String currentCard = MENU;
@@ -44,6 +46,7 @@ public class MainFrame extends JFrame {
         root.add(gamePanel, GAME);
         root.add(historyPanel, HISTORY);
         root.add(questionsPanel, QUESTIONS);
+        root.add(gameOverPanel, GAME_OVER);
         setContentPane(root);
         applyComponentOrientation(ComponentOrientation.RIGHT_TO_LEFT);
         setIconImages(ZebraArt.windowIcons());
@@ -81,6 +84,11 @@ public class MainFrame extends JFrame {
 
     public HistoryPanel getHistoryPanel() {
         return historyPanel;
+    }
+
+    /** @return מסך הסיום (FR-54) */
+    public GameOverPanel getGameOverPanel() {
+        return gameOverPanel;
     }
 
     public PlaceholderPanel getQuestionsPanel() {
