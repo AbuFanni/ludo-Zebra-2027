@@ -52,6 +52,10 @@ final class SetupValidationTests {
         ModelTests.run("T2.20 invalid setup gives no settings (game cannot start)", SetupValidationTests::noSettings);
         ModelTests.run("T2.21 hidden rows beyond the player count are ignored", SetupValidationTests::hiddenRows);
         ModelTests.run("T2.22 valid setup keeps names and colors in entry order", SetupValidationTests::validOrder);
+        // FR-04: תווים בלתי נראים (סקירה של מוחמד על PR #2, הערה 3)
+        ModelTests.run("T2.23 name of only invisible characters is rejected", SetupValidationTests::invisibleOnly);
+        ModelTests.run("T2.24 invisible characters are removed from a name", SetupValidationTests::invisibleRemoved);
+        ModelTests.run("T2.25 names that differ only by invisible characters are duplicates", SetupValidationTests::invisibleDuplicate);
     }
 
     // ------------------------------------------------------------- עזר
@@ -203,5 +207,34 @@ final class SetupValidationTests {
         ModelTests.checkEq(Arrays.asList("Nour", "Nimer", "Wasim"), s.getNames(), "names");
         ModelTests.checkEq(Arrays.asList(PlayerColor.YELLOW, PlayerColor.RED, PlayerColor.GREEN), s.getColors(), "colors");
         ModelTests.checkEq(Difficulty.MEDIUM, s.getDifficulty(), "difficulty");
+    }
+
+    // ------------------------------------------------------------- FR-04: תווים בלתי נראים
+
+    private static void invisibleOnly() {
+        for (String name : Arrays.asList("\u00A0", "\u200E", "\u200F", "\u00A0\u200F\u00A0", "\u2007\u202F", "\uFEFF")) {
+            SetupValidationResult r = two(name, "Nimer");
+            ModelTests.checkEq(ENTER_NAME, r.getNameErrors().get(0), "name " + codes(name));
+            ModelTests.check(r.getSettings() == null, "no settings for " + codes(name));
+        }
+    }
+
+    private static void invisibleRemoved() {
+        SetupValidationResult r = two("\u200FNour\u00A0", "\u200ENi\u200Fmer");
+        ModelTests.check(r.isValid(), "valid after cleaning");
+        ModelTests.checkEq(Arrays.asList("Nour", "Nimer"), r.getSettings().getNames(), "clean names");
+    }
+
+    private static void invisibleDuplicate() {
+        SetupValidationResult r = two("Nour", "No\u200Eur");
+        ModelTests.checkEq("השם כבר נבחר ע\"י שחקן 1", r.getNameErrors().get(1), "duplicate after cleaning");
+    }
+
+    private static String codes(String s) {
+        StringBuilder sb = new StringBuilder();
+        for (char c : s.toCharArray()) {
+            sb.append(String.format("\\u%04X", (int) c));
+        }
+        return sb.toString();
     }
 }

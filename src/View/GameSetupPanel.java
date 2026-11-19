@@ -319,19 +319,24 @@ public class GameSetupPanel extends JPanel {
      */
     public void showErrors(SetupValidationResult result, boolean moveFocus) {
         clearErrors();
+        // שורה אחרי שורה, שם ואז צבע, כדי שהפוקוס יגיע לשדה השגוי העליון במסך
+        // (הערה 2 בסקירה של מוחמד על PR #2)
         Component firstBad = null;
-        for (Map.Entry<Integer, String> e : result.getNameErrors().entrySet()) {
-            int i = e.getKey();
-            nameErrors.get(i).setText(e.getValue());
-            nameFields.get(i).setBorder(errorBorder);
-            if (firstBad == null) {
-                firstBad = nameFields.get(i);
+        for (int i = 0; i < nameFields.size(); i++) {
+            String nameError = result.getNameErrors().get(i);
+            if (nameError != null) {
+                nameErrors.get(i).setText(nameError);
+                nameFields.get(i).setBorder(errorBorder);
+                if (firstBad == null) {
+                    firstBad = nameFields.get(i);
+                }
             }
-        }
-        for (Map.Entry<Integer, String> e : result.getColorErrors().entrySet()) {
-            colorErrors.get(e.getKey()).setText(e.getValue());
-            if (firstBad == null) {
-                firstBad = colorBoxes.get(e.getKey());
+            String colorError = result.getColorErrors().get(i);
+            if (colorError != null) {
+                colorErrors.get(i).setText(colorError);
+                if (firstBad == null) {
+                    firstBad = colorBoxes.get(i);
+                }
             }
         }
         if (result.getGeneralError() != null) {
