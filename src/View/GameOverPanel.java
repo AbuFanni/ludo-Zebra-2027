@@ -74,7 +74,8 @@ public class GameOverPanel extends JPanel {
         column.setOpaque(false);
         column.setLayout(new BoxLayout(column, BoxLayout.Y_AXIS));
 
-        JLabel title = UiTheme.label("המשחק נגמר!", UiTheme.DISPLAY.deriveFont(44f), UiTheme.INK);
+        // גופן הכותרות הרגיל, כי גופן התצוגה (DISPLAY) לא תומך בעברית בכל מערכת
+        JLabel title = UiTheme.label("המשחק נגמר!", UiTheme.TITLE.deriveFont(40f), UiTheme.INK);
         stack(column, title, 4);
         stack(column, winnerLine, 18);
         stack(column, podium, 6);
@@ -117,7 +118,8 @@ public class GameOverPanel extends JPanel {
      */
     public void showResults(List<Player> ranking, String durationText, String difficultyName, String saveNote) {
         Player winner = ranking.isEmpty() ? null : ranking.get(0);
-        winnerLine.setText(winner == null ? " " : winner.getName() + " ניצח!");
+        // RLM בהתחלה: שם באנגלית לא יהפוך את כיוון השורה
+        winnerLine.setText(winner == null ? " " : "\u200F" + winner.getName() + " ניצח!");
         podium.setRanking(ranking);
         if (ranking.size() > 3) {
             StringBuilder sb = new StringBuilder();
