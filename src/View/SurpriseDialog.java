@@ -58,6 +58,8 @@ public final class SurpriseDialog {
     private final JDialog dialog;
     private final JPanel choices = new JPanel();
     private final JLabel feedback = new JLabel(" ");
+    private final JLabel description = new JLabel();
+    private final SurpriseArt.Reel reel = new SurpriseArt.Reel();
     private final JButton actionButton;
     private final JButton continueButton = UiTheme.primaryButton("המשך");
     private final Actions actions;
@@ -77,17 +79,13 @@ public final class SurpriseDialog {
         JPanel root = new JPanel();
         root.setLayout(new BoxLayout(root, BoxLayout.Y_AXIS));
         root.setBackground(UiTheme.SURFACE);
-        root.setBorder(BorderFactory.createEmptyBorder(20, 24, 20, 24));
+        root.setBorder(BorderFactory.createEmptyBorder(18, 28, 22, 28));
 
+        // שורת הכותרת: "הפתעה!" ועל מי האירוע חל
         JPanel header = new JPanel(new BorderLayout(12, 0));
         header.setOpaque(false);
-        JLabel badge = new JLabel("!  " + event.getHebrewName());
-        badge.setFont(UiTheme.BUTTON);
-        badge.setForeground(Color.WHITE);
-        badge.setOpaque(true);
-        badge.setBackground(UiTheme.SURPRISE);
-        badge.setBorder(BorderFactory.createEmptyBorder(6, 12, 6, 12));
-        header.add(badge, BorderLayout.LINE_START);
+        JLabel title = UiTheme.label("הפתעה!", UiTheme.TITLE.deriveFont(28f), UiTheme.INK);
+        header.add(title, BorderLayout.LINE_START);
         Player player = pawn.getOwner();
         JLabel who = new JLabel("חל על: " + player.getName());
         who.setFont(UiTheme.BODY);
@@ -96,12 +94,17 @@ public final class SurpriseDialog {
         who.setIconTextGap(8);
         header.add(who, BorderLayout.LINE_END);
         add(root, header);
-        root.add(Box.createVerticalStrut(14));
+        root.add(Box.createVerticalStrut(12));
 
-        JLabel text = new JLabel(html(event.getDescription(), false));
-        text.setFont(UiTheme.SUBTITLE);
-        text.setForeground(UiTheme.TEXT);
-        add(root, text);
+        // הגלגל שמראה את ההגרלה (FR-44); האירוע עצמו כבר הוגרל במודל
+        add(root, reel);
+        root.add(Box.createVerticalStrut(12));
+
+        description.setFont(UiTheme.SUBTITLE);
+        // הטקסט נמצא כבר עכשיו (כדי שגודל החלון יהיה נכון), אבל בצבע הרקע עד שהגלגל נעצר
+        description.setForeground(UiTheme.SURFACE);
+        description.setText(html(event.getDescription(), false));
+        add(root, description);
         root.add(Box.createVerticalStrut(14));
 
         choices.setOpaque(false);
@@ -136,14 +139,57 @@ public final class SurpriseDialog {
         bottom.add(continueButton);
         add(root, bottom);
 
-        root.applyComponentOrientation(ComponentOrientation.RIGHT_TO_LEFT);
-        dialog.setContentPane(root);
+        JPanel frame = new JPanel(new BorderLayout());
+        frame.setBackground(UiTheme.SURFACE);
+        frame.setBorder(BorderFactory.createLineBorder(UiTheme.INK, 2));
+        frame.add(new SurpriseArt.Header(), BorderLayout.NORTH);
+        frame.add(root, BorderLayout.CENTER);
+        frame.applyComponentOrientation(ComponentOrientation.RIGHT_TO_LEFT);
+        dialog.setContentPane(frame);
         if (actionButton != null) {
             dialog.getRootPane().setDefaultButton(actionButton);
         }
         dialog.pack();
         dialog.setResizable(false);
         dialog.setLocationRelativeTo(owner);
+
+        // עד שהגלגל נעצר אי אפשר ללחוץ כלום; אחר כך מופיע ההסבר והכפתורים נפתחים
+        setEnabledDeep(choices, false);
+        if (actionButton != null) {
+            actionButton.setEnabled(false);
+        }
+        final SurpriseEvent shownEvent = event;
+        Runnable reveal = () -> {
+            description.setForeground(UiTheme.TEXT);
+            setEnabledDeep(choices, true);
+            if (actionButton != null) {
+                actionButton.setEnabled(true);
+                actionButton.requestFocusInWindow();
+            }
+        };
+        dialog.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowOpened(java.awt.event.WindowEvent e) {
+                if (animate) {
+                    reel.spin(shownEvent, reveal);
+                } else {
+                    reel.show(shownEvent);
+                    reveal.run();
+                }
+            }
+        });
+    }
+
+    /** אנימציות פעילות; בבדיקות אוטומטיות אפשר לכבות. */
+    static boolean animate = !Boolean.getBoolean("ludo.noAnimations");
+
+    private static void setEnabledDeep(java.awt.Container c, boolean enabled) {
+        for (Component k : c.getComponents()) {
+            k.setEnabled(enabled);
+            if (k instanceof java.awt.Container) {
+                setEnabledDeep((java.awt.Container) k, enabled);
+            }
+        }
     }
 
     /**
