@@ -38,15 +38,21 @@ Java (Swing), ארכיטקטורת MVC בחבילות `Model`, `View` ו-`Contro
 | `Model` | `Game`, `GamePhase`, `Pawn`, `Move`, `MoveResult`, `RollResult`, `GameListener`, `Die`, `StepDie` | FR-15, FR-19 עד FR-23 | וסים |
 | `Controller` | `GameController` | חיבור מסך המשחק למודל | מוחמד, וסים |
 | `Model` / `View` / `Controller` | `Question`, `AnswerCheck`, `AnswerResult`, `QuestionFactory`, `QuestionDeck`, `QuestionRepository`, `QuestionFileException`, `DefaultQuestions`, `QuestionDialog`, שלב השאלה ב-`Game` וב-`GameController` | FR-38 עד FR-43, FR-74 (US-7) | מוחמד |
+| `Model` / `View` / `Controller` | `SurpriseHandler` (כל לוגיקת ההפתעות), `SurpriseEvent`, `SurpriseDeck`, `SurpriseResult`, `SurpriseDialog`, `SurpriseArt`, `GameOverPanel`, נקודות חיבור קטנות ב-`Game` ושלב ההפתעה ב-`GameController`, מסך הסיום ב-`MainController` | FR-44 עד FR-54, NFR-11 חלק 2 (US-8, US-9) | נור |
 | `Model` / `View` / `Controller` | `HistoryRepository`, `GameRecord`, `HistoryPanel`, `HistoryController` | היסטוריה ב-CSV (מעבר לאיטרציה 1) | לפי חלוקת איטרציה 3 |
 | — | `build.sh`, `build.bat`, `run.bat`, `run.sh` | NFR-08 (JAR שרץ על כל מחשב) | וסים (Scrum master) |
 | `test` | `ModelTests` | בדיקות יחידה | כל אחד לחלק שלו |
 | `test` | `QuestionTests` (T8.01 עד T8.26) | FR-38 עד FR-43, FR-74 | מוחמד |
+| `test` | `SurpriseTests` (T9.01 עד T9.27) | FR-44 עד FR-54, NFR-11 (10,000 הגרלות) | נור |
 
 ## תבניות עיצוב
 
 - **MVC:** המודל לא מכיר את Swing. ה-View מצייר ומדווח על לחיצות, וה-Controller מחליט מה קורה.
-- **Observer:** `Game` מודיע ל-`GameListener` (ה-`GameController`) על הטלה, מהלך, תור וסיום.
+- **Observer:** `Game` מודיע ל-`GameListener` (ה-`GameController`) על הטלה, מהלך, תור וסיום, וגם על הפתעה
+  שהוגרלה, אירוע שבוצע ותור שדולג. מסך הסיום (`GameOverPanel`) מתמלא מההודעה `onGameOver`, בלי שהמודל
+  מכיר אותו.
+- **Strategy (הפתעות):** `SurpriseDeck` מקבל את מקור האירועים ואת קוביית ה-UltraBoost מבחוץ. במשחק האירוע מוגרל
+  לפי האחוזים (FR-44), ובבדיקות קובעים אירוע וקובייה כדי לבדוק כל אירוע לבד.
 - **Factory Method:** `SquareFactory` יוצר את סוג המשבצת הנכון, ו-`BoardBuilder.build(difficulty)` יוצר את הלוח
   לפי רמת הקושי (המקום שה-SDP הגדיר ליצירת לוח לפי רמה). `QuestionFactory.forLevel(level)` מחזיר יוצר שאלות
   לכל רמה; כל שאלה (מהקובץ, מהמאגר ההתחלתי ובהמשך מאשף המנהל) נוצרת ונבדקת רק דרכו.
@@ -68,5 +74,6 @@ Java (Swing), ארכיטקטורת MVC בחבילות `Model`, `View` ו-`Contro
 
 ## מה בהמשך
 
-- איטרציה 2: הפתעות, קוביות Boost ו-UltraBoost. (שאלות על משבצת `?`: נעשה, FR-38 עד FR-43.)
+- איטרציה 2: קוביות Boost ו-UltraBoost. (שאלות על משבצת `?`: נעשה, FR-38 עד FR-43. הפתעות על משבצת `!`
+  ומסך הסיום: נעשה, FR-44 עד FR-54.)
 - איטרציה 3: אשף ניהול שאלות עם הרשאת מנהל.

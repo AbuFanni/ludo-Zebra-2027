@@ -2,9 +2,11 @@ package Controller;
 
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.util.List;
 
 import Model.GameSettings;
 import Model.HistoryRepository;
+import Model.Player;
 import Model.QuestionRepository;
 import View.Dialogs;
 import View.MainFrame;
@@ -40,6 +42,8 @@ public class MainController {
         frame.getHistoryPanel().getBackButton().addActionListener(e -> showMenu());
         frame.getQuestionsPanel().getBackButton().addActionListener(e -> showMenu());
         frame.getGamePanel().getExitButton().addActionListener(e -> requestLeaveGame());
+        frame.getGameOverPanel().getNewGameButton().addActionListener(e -> showSetup());
+        frame.getGameOverPanel().getMenuButton().addActionListener(e -> showMenu());
         setupController.bind();
         gameController.bind();
         frame.addWindowListener(new WindowAdapter() {
@@ -71,6 +75,14 @@ public class MainController {
     public void showHistory() {
         historyController.refresh();
         frame.showCard(MainFrame.HISTORY);
+    }
+
+    /**
+     * מסך הסיום (FR-54): המקומות, זמן המשחק ורמת הקושי, עם "משחק חדש" ו"לתפריט".
+     */
+    public void showGameOver(List<Player> ranking, String duration, String difficulty, String saveNote) {
+        frame.getGameOverPanel().showResults(ranking, duration, difficulty, saveNote);
+        frame.showCard(MainFrame.GAME_OVER);
     }
 
     /**
