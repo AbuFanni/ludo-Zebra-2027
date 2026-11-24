@@ -27,6 +27,7 @@ public final class ModelTests {
         run("special squares only on shared track", ModelTests::specialsOnSharedTrack);
         run("paths rotate per color", ModelTests::pathsRotate);
         run("medium path: outer ring -> arrow -> inner", ModelTests::mediumPathUsesArrows);
+        BoardModelTests.runAll();
         run("enter only with 6", ModelTests::enterOnlyWithSix);
         run("six gives extra roll", ModelTests::sixGivesExtraRoll);
         run("third six cancelled", ModelTests::thirdSixCancelled);
@@ -40,6 +41,7 @@ public final class ModelTests {
         run("exact roll needed for finish", ModelTests::exactFinish);
         run("game over and ranking", ModelTests::gameOverRanking);
         run("random full games always finish", ModelTests::randomGamesFinish);
+        PlayerModelTests.runAll();
         run("setup validation", ModelTests::setupValidation);
         run("history csv format", ModelTests::historyCsv);
         SetupValidationTests.runAll();
