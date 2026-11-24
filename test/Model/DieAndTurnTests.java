@@ -41,9 +41,9 @@ final class DieAndTurnTests {
     // ------------------------------------------------------------- helpers
 
     /** A die that returns preset values and counts how many times it was thrown. */
-    private static final class ScriptedDie implements Die {
+    static final class ScriptedDie implements Die {
         private final int[] values;
-        private int throwsCount;
+        int throwsCount;
 
         ScriptedDie(int... values) {
             this.values = values;
@@ -56,8 +56,13 @@ final class DieAndTurnTests {
     }
 
     /** A game on the easy board, with the players in the given color order (P1, P2, ...). */
-    private static Game game(Die die, PlayerColor... colors) {
-        Board board = BoardBuilder.build(Difficulty.EASY, new Random(7));
+    static Game game(Die die, PlayerColor... colors) {
+        return game(Difficulty.EASY, die, colors);
+    }
+
+    /** A game on the given level (board seed 7), with the players in the given color order. */
+    static Game game(Difficulty level, Die die, PlayerColor... colors) {
+        Board board = BoardBuilder.build(level, new Random(7));
         List<Player> players = new ArrayList<Player>();
         for (int i = 0; i < colors.length; i++) {
             players.add(new Player("P" + (i + 1), colors[i], i));
@@ -85,7 +90,7 @@ final class DieAndTurnTests {
         return turns;
     }
 
-    private static void expectThrows(Class<? extends Throwable> type, Runnable action, String what) {
+    static void expectThrows(Class<? extends Throwable> type, Runnable action, String what) {
         try {
             action.run();
         } catch (Throwable t) {
