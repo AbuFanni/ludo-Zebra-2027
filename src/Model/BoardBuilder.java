@@ -116,12 +116,24 @@ public final class BoardBuilder {
             baseOrigins.put(color, baseOrigin(n, o, q));
         }
 
-        // 4. הגרלת משבצות הגנה, שאלה והפתעה על משבצות פנויות במסלול המשותף
+        // 4. הגרלת משבצות הגנה, שאלה והפתעה (FR-10, FR-11):
+        //    - רק משבצות רגילות של המסלול המשותף: משבצות התחלה (#), חץ, מסלול בית וסיום כבר תפוסות
+        //      ב-kinds, ולכן לא נכנסות לרשימה.
+        //    - הכמות לכל רמה מגיעה מ-Difficulty (4/8/12 הגנה), מקום אחד לכל הפרמטרים (NFR-15).
+        //    - ערבוב הרשימה ולקיחה לפי הסדר = הגרלה בלי חזרות, כך שאין שתי משבצות מיוחדות באותו
+        //      מקום (כמו "הגרלה מחדש בהתנגשות"). משבצות צמודות מותרות.
+        //    - random מוזרק מבחוץ: במשחק אקראי חדש בכל פעם, בבדיקות seed קבוע שחוזר על עצמו.
         List<Position> free = new ArrayList<Position>();
         for (Position p : shared) {
             if (!kinds.containsKey(p)) {
                 free.add(p);
             }
+        }
+        int needed = difficulty.getSafeSquares() + QuestionLevel.values().length * difficulty.getQuestionsPerLevel()
+                + difficulty.getSurpriseSquares();
+        if (needed > free.size()) {
+            throw new IllegalStateException("Difficulty " + difficulty + " needs " + needed
+                    + " special squares but the shared track has only " + free.size() + " free squares");
         }
         Collections.shuffle(free, random);
         Map<Position, QuestionLevel> levels = new HashMap<Position, QuestionLevel>();

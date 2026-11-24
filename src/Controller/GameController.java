@@ -135,7 +135,12 @@ public class GameController implements GameListener {
         } else if (r.hasMoves()) {
             view.appendLog(who + " הטיל " + r.getValue() + ".");
             view.setRollEnabled(false);
-            view.setHint("בחרו כלי מסומן בצהוב");
+            if (game.hasExitAndBoardChoice()) {
+                // FR-20: ב-6 השחקן בוחר בין הוצאת כלי מהטירה לבין הזזת כלי שכבר על הלוח
+                view.setHint("יצא 6: הוציאו כלי מהטירה או הזיזו כלי על הלוח");
+            } else {
+                view.setHint("בחרו כלי מסומן בצהוב");
+            }
         } else if (r.isRollAgain()) {
             view.appendLog(who + " הטיל 6 ואין מהלך חוקי – מטילים שוב.");
             view.setRollEnabled(true);
