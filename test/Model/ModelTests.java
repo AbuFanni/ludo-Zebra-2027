@@ -50,6 +50,7 @@ public final class ModelTests {
         BoardSpecialSquaresTests.runAll();
         CastleExitTests.runAll();
         CaptureTests.runAll();
+        DoubleBlockTests.runAll();
 
         System.out.println();
         System.out.println(passed + " passed, " + failures.size() + " failed");
